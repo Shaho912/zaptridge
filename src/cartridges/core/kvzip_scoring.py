@@ -142,7 +142,7 @@ class KVzipScorer:
                 prev_hint = chunks[i - 1][:, -_PREV_SUFFIX_LEN:]
                 prompt = torch.cat([prompt, prev_hint], dim=-1)
 
-            repeat_ids = torch.cat([prompt, chunk_ids], dim=-1)
+            repeat_ids = torch.cat([prompt.to(chunk_ids.device), chunk_ids], dim=-1)
             pairs.append((chunk_ids, repeat_ids))
 
         return pairs
