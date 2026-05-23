@@ -222,6 +222,8 @@ def main() -> int:
     parser.add_argument("--max-context-tokens", type=int, default=8192)
     parser.add_argument("--semantic-judge", action="store_true")
     parser.add_argument("--judge-device")
+    parser.add_argument("--kvzip-init", action="store_true",
+                        help="Initialize cartridges from KVzip+ importance-scored tokens instead of the first p tokens.")
     args = parser.parse_args()
 
     inputs = load_experiment_inputs(args.experiment_name, data_root=args.data_root)
@@ -364,6 +366,7 @@ def main() -> int:
                 seed=args.seed,
                 validation_examples=args.train_validation_examples,
                 validation_interval=args.train_validation_interval,
+                kvzip_init=args.kvzip_init,
             )
             train_seconds += time.perf_counter() - train_started
             slice_train_summaries[slice_id] = train_summary

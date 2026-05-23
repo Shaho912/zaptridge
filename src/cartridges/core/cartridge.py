@@ -12,13 +12,18 @@ prefix; they can move away from "token i in the original document" and become a 
 memory encoding facts from anywhere in the chunk.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
+from typing import TYPE_CHECKING, Iterable
 
 import torch
 from torch import nn
 from transformers.cache_utils import DynamicCache
+
+if TYPE_CHECKING:
+    from cartridges.core.kvzip_scoring import KVzipScorer
 
 
 @dataclass(frozen=True)
@@ -178,4 +183,67 @@ def initialize_from_prefix_text(
     past_key_values = _normalize_past_key_values(outputs.past_key_values)
     keys = [layer[0].detach().to(model.dtype) for layer in past_key_values]
     values = [layer[1].detach().to(model.dtype) for layer in past_key_values]
+    return TrainableKVCartridge(keys=keys, values=values, num_frozen_tokens=num_frozen_tokens)
+
+
+@torch.no_grad()
+def initialize_from_kvzip_scores(
+    scorer: KVzipScorer,
+    model,
+    tokenizer,
+    text: str,
+    num_tokens: int,
+    num_frozen_tokens: int = 1,
+) -> TrainableKVCartridge:
+    """Seed a cartridge from the top-scoring token positions according to KVzip+ importance.
+
+    Unlike ``initialize_from_prefix_text``, which takes the first ``num_tokens`` of the
+    text, this function scores every token via context reconstruction and selects the
+    ``num_tokens`` positions the model most relies on to reconstruct meaning.
+
+    The prefill forward pass is shared with the scorer's reconstruction phase so we
+    only pay for one full-context prefill instead of two.
+
+    Args:
+        scorer: A ``KVzipScorer`` whose model must be loaded with attn_implementation="eager".
+        model: The same model instance passed to the scorer.
+        tokenizer: Matching tokenizer.
+        text: Full corpus chunk (typically ``TrainingExample.system_prompt``).
+        num_tokens: Number of KV positions to keep (the cartridge budget ``p``).
+        num_frozen_tokens: Leading positions frozen as attention sinks during training.
+    """
+    encoded = tokenizer(text, return_tensors="pt", add_special_tokens=False)
+    input_ids = encoded["input_ids"].to(model.device)
+    context_len = input_ids.shape[-1]
+
+    # One prefill shared across scoring and initialization.
+    initial_cache = scorer._prefill(input_ids)
+
+    # Reconstruction scoring — mirrors scorer.score_tokens() but reuses initial_cache.
+    scores = torch.zeros(context_len, dtype=torch.float32)
+    scores[: scorer.n_sink] = float("inf")
+
+    chunk_start = 0
+    for chunk_ids, repeat_ids in scorer._make_reconstruction_pairs(input_ids):
+        chunk_end = chunk_start + chunk_ids.shape[-1]
+        scores[chunk_start:chunk_end] = scorer._score_chunk(
+            repeat_ids=repeat_ids,
+            initial_cache=initial_cache,
+            chunk_start=chunk_start,
+            chunk_end=chunk_end,
+            context_len=context_len,
+        )
+        chunk_start = chunk_end
+
+    # Select top-num_tokens positions, preserving document order.
+    if num_tokens >= context_len:
+        top_indices = torch.arange(context_len)
+    else:
+        _, top_indices = torch.topk(scores, num_tokens)
+        top_indices = top_indices.sort().values
+
+    idx = top_indices.to(model.device)
+    num_layers = len(initial_cache.key_cache)
+    keys = [initial_cache.key_cache[l].detach().to(model.dtype)[..., idx, :] for l in range(num_layers)]
+    values = [initial_cache.value_cache[l].detach().to(model.dtype)[..., idx, :] for l in range(num_layers)]
     return TrainableKVCartridge(keys=keys, values=values, num_frozen_tokens=num_frozen_tokens)

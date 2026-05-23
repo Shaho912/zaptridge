@@ -14,7 +14,7 @@ from torch.optim.lr_scheduler import LambdaLR
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from cartridges.config import DEFAULT_MATRIX
-from cartridges.core import TrainableKVCartridge, initialize_from_prefix_text
+from cartridges.core import TrainableKVCartridge, initialize_from_prefix_text, initialize_from_kvzip_scores, KVzipScorer
 from cartridges.data.common import stable_hash, write_json
 
 
@@ -280,6 +280,7 @@ def train_cartridge(
     seed: int = 0,
     validation_examples: int = 16,
     validation_interval: int = 10,
+    kvzip_init: bool = False,
 ) -> dict[str, Any]:
     """Train one cartridge budget against a fixed supervision dataset.
 
@@ -312,10 +313,14 @@ def train_cartridge(
         _set_training_seed(seed)
 
     tokenizer = AutoTokenizer.from_pretrained(DEFAULT_MATRIX.model_id)
+    # KVzip+ scoring requires output_attentions=True, which SDPA does not support.
+    # When kvzip_init is enabled we load with eager attention for the full session;
+    # training is slightly slower but avoids loading two model copies simultaneously.
+    attn_implementation = "eager" if kvzip_init else "sdpa"
     model = AutoModelForCausalLM.from_pretrained(
         DEFAULT_MATRIX.model_id,
         dtype=torch.bfloat16 if device.startswith("cuda") else torch.float32,
-        attn_implementation="sdpa",
+        attn_implementation=attn_implementation,
     )
     model.to(device)
     model.eval()
@@ -346,16 +351,27 @@ def train_cartridge(
         start_step = int(checkpoint["global_step"])
         loss_history = [float(value) for value in checkpoint["loss_history"]]
     else:
-        # Seed the cartridge from the first ``cartridge_tokens`` positions of the chunk-level
-        # system prompt. This is only an initialization: the trainable K/V tensors below are
-        # subsequently optimized against supervision that came from the full chunk context.
-        cartridge = initialize_from_prefix_text(
-            model=model,
-            tokenizer=tokenizer,
-            text=examples[0].system_prompt,
-            num_tokens=cartridge_tokens,
-            num_frozen_tokens=num_frozen_tokens,
-        )
+        if kvzip_init:
+            # Score all tokens via KVzip+ context reconstruction and seed the cartridge
+            # from the top-scoring positions rather than the first p tokens.
+            scorer = KVzipScorer(model=model, tokenizer=tokenizer)
+            cartridge = initialize_from_kvzip_scores(
+                scorer=scorer,
+                model=model,
+                tokenizer=tokenizer,
+                text=examples[0].system_prompt,
+                num_tokens=cartridge_tokens,
+                num_frozen_tokens=num_frozen_tokens,
+            )
+        else:
+            # Default: seed from the first ``cartridge_tokens`` positions of the system prompt.
+            cartridge = initialize_from_prefix_text(
+                model=model,
+                tokenizer=tokenizer,
+                text=examples[0].system_prompt,
+                num_tokens=cartridge_tokens,
+                num_frozen_tokens=num_frozen_tokens,
+            )
         cartridge.to(device)
         optimizer = AdamW(cartridge.parameters(), lr=learning_rate)
         scheduler = LambdaLR(optimizer, lr_lambda=lambda _: 1.0)
