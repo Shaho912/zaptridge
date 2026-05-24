@@ -23,6 +23,8 @@ Reference implementation: https://github.com/NVIDIA/kvpress (Apache 2.0)
 Paper: https://arxiv.org/abs/2505.23416
 """
 
+import copy
+
 import torch
 from torch import nn
 from transformers import PreTrainedModel, PreTrainedTokenizerBase
@@ -140,7 +142,7 @@ class KVzipScorer:
                     _LATER_CHUNK_PROMPT, return_tensors="pt", add_special_tokens=False
                 )["input_ids"]
                 prev_hint = chunks[i - 1][:, -_PREV_SUFFIX_LEN:]
-                prompt = torch.cat([prompt.to(prev_hint.device), prev_hint], dim=-1)
+                prompt = torch.cat([prompt, prev_hint], dim=-1)
 
             repeat_ids = torch.cat([prompt.to(chunk_ids.device), chunk_ids], dim=-1)
             pairs.append((chunk_ids, repeat_ids))
@@ -257,7 +259,8 @@ class KVzipScorer:
         Wo = attn_mod.o_proj.weight.T.view(num_kv_heads, num_groups, head_dim, hidden_size).float()
 
         # V from initial cache: [1, num_kv_heads, context_len, head_dim]
-        V = initial_cache.value_cache[layer_idx][:, :, :context_len].float()
+        # NEW
+        V = initial_cache.layers[layer_idx].values[:, :, :context_len].float()
 
         # WoV[b, h, g, t, j] = sum_i Wo[h, g, i, j] * V[b, h, t, i]
         # Shape: [1, num_kv_heads, num_groups, context_len, hidden_size]
@@ -277,11 +280,13 @@ class KVzipScorer:
 # Cache utilities
 # ------------------------------------------------------------------
 
+# NEW
 def _clone_cache(cache: DynamicCache) -> DynamicCache:
-    """Clone a DynamicCache so reconstruction passes don't pollute the original."""
     new_cache = DynamicCache()
-    new_cache.key_cache = [k.clone() for k in cache.key_cache]
-    new_cache.value_cache = [v.clone() for v in cache.value_cache]
-    if hasattr(cache, "_seen_tokens"):
-        new_cache._seen_tokens = cache._seen_tokens
+    new_cache.layers = []
+    for layer in cache.layers:
+        new_layer = copy.copy(layer)
+        new_layer.keys = layer.keys.clone()
+        new_layer.values = layer.values.clone()
+        new_cache.layers.append(new_layer)
     return new_cache

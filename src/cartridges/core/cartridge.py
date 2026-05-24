@@ -243,7 +243,7 @@ def initialize_from_kvzip_scores(
         top_indices = top_indices.sort().values
 
     idx = top_indices.to(model.device)
-    num_layers = len(initial_cache.key_cache)
-    keys = [initial_cache.key_cache[l].detach().to(model.dtype)[..., idx, :] for l in range(num_layers)]
-    values = [initial_cache.value_cache[l].detach().to(model.dtype)[..., idx, :] for l in range(num_layers)]
+    num_layers = len(initial_cache.layers)
+    keys = [initial_cache.layers[l].keys.detach().to(model.dtype)[..., idx, :] for l in range(num_layers)]
+    values = [initial_cache.layers[l].values.detach().to(model.dtype)[..., idx, :] for l in range(num_layers)]
     return TrainableKVCartridge(keys=keys, values=values, num_frozen_tokens=num_frozen_tokens)
