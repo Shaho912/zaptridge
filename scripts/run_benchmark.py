@@ -226,7 +226,7 @@ def main() -> int:
                         help="Initialize cartridges from KVzip+ importance-scored tokens instead of the first p tokens.")
     parser.add_argument("--kvzip-prefix-tokens", type=int, default=256,
                         help="Number of leading tokens kept unconditionally as prefix in hybrid KVzip+ init (default: 256).")
-    parser.add_argument("--kvzip-chunk-size", type=int, default=2048,
+    parser.add_argument("--kvzip-chunk-size", type=int, default=1024,
                         help="Reconstruction chunk size for KVzip+ scoring (default: 1024). Larger = better scores but more VRAM.")
     args = parser.parse_args()
 

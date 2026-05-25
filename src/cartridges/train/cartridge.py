@@ -282,7 +282,7 @@ def train_cartridge(
     validation_interval: int = 10,
     kvzip_init: bool = False,
     kvzip_prefix_tokens: int = 256,
-    kvzip_chunk_size: int = 2048,
+    kvzip_chunk_size: int = 1024,
 ) -> dict[str, Any]:
     """Train one cartridge budget against a fixed supervision dataset.
 
