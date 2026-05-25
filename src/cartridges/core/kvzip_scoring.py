@@ -171,7 +171,9 @@ class KVzipScorer:
             for layer_idx, layer in enumerate(self.model.model.layers):
                 def _make_hook(idx: int):
                     def _hook(module: nn.Module, args: tuple, kwargs: dict) -> None:
-                        hs = kwargs.get("hidden_states") or (args[0] if args else None)
+                        hs = kwargs.get("hidden_states")
+                        if hs is None:
+                            hs = args[0] if args else None
                         if hs is not None:
                             hs_by_layer[idx] = hs.detach()
                     return _hook
