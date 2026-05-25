@@ -250,8 +250,8 @@ class KVzipScorer:
 
         # --- Step 2: multiply by ||Wo @ V|| for each context KV position ---
         attn_mod = self.model.model.layers[layer_idx].self_attn
-        num_heads: int = getattr(attn_mod, "num_heads", self.model.config.num_attention_heads)
-        num_kv_heads: int = attn_mod.num_key_value_heads
+        num_heads: int = self.model.config.num_attention_heads
+        num_kv_heads: int = self.model.config.num_key_value_heads
         num_groups: int = num_heads // num_kv_heads
         head_dim: int = attn_mod.head_dim
         hidden_size: int = self.model.config.hidden_size
