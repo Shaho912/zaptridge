@@ -52,7 +52,7 @@ class KVzipScorer:
         self,
         model: PreTrainedModel,
         tokenizer: PreTrainedTokenizerBase,
-        chunk_size: int = 2048,
+        chunk_size: int = 512,
         kvzip_plus: bool = True,
         n_sink: int = 4,
     ):
@@ -185,6 +185,11 @@ class KVzipScorer:
         # but we only want the original context KV for each independent chunk pass.
         cache_copy = _clone_cache(initial_cache)
 
+        # Return any memory from the previous chunk's attention matrices back to CUDA
+        # before allocating new ones — prevents fragmentation OOM across chunks.
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
         try:
             outputs = self.model(
                 input_ids=repeat_ids.to(self.model.device),
@@ -195,6 +200,7 @@ class KVzipScorer:
         finally:
             for hook in hooks:
                 hook.remove()
+        del cache_copy
 
         if outputs.attentions is None:
             raise RuntimeError(
@@ -202,12 +208,21 @@ class KVzipScorer:
                 "Reload the model with attn_implementation='eager' before scoring."
             )
 
-        layer_scores: list[torch.Tensor] = []
+        # Convert to a mutable list and drop the model output immediately so the
+        # hidden-state tensors inside it can be freed before we process attention.
+        # Then zero each entry after use so all 36 layers never live simultaneously.
+        attentions: list = list(outputs.attentions)
+        del outputs
 
-        for layer_idx, attn in enumerate(outputs.attentions):
+        layer_scores: list[torch.Tensor] = []
+        for layer_idx in range(len(attentions)):
+            attn = attentions[layer_idx]
+            attentions[layer_idx] = None  # release reference so GPU memory can be reclaimed
+
             # attn: [1, num_heads, q_len, context_len + q_len]
             # Slice to context positions only (reconstruction queries attending to context).
             ctx_attn = attn[..., :context_len].float()  # [1, num_heads, q_len, context_len]
+            del attn
 
             if self.kvzip_plus:
                 ctx_attn = self._apply_kvzip_plus(
@@ -220,10 +235,11 @@ class KVzipScorer:
 
             # Max over (num_heads, q_len) → [1, context_len] → slice chunk → [chunk_len]
             chunk_scores = ctx_attn[..., chunk_start:chunk_end].amax(dim=(-3, -2)).squeeze(0)
-            layer_scores.append(chunk_scores)
+            layer_scores.append(chunk_scores.cpu())
+            del ctx_attn, chunk_scores
 
         # Average importance across all transformer layers.
-        return torch.stack(layer_scores).mean(dim=0).cpu()
+        return torch.stack(layer_scores).mean(dim=0)
 
     # ------------------------------------------------------------------
     # KVzip+ normalization
