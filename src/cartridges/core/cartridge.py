@@ -158,6 +158,60 @@ class TrainableKVCartridge(nn.Module):
 
 
 @torch.no_grad()
+def prune_cartridge_by_kvzip_scores(
+    cartridge: "TrainableKVCartridge",
+    scorer: "KVzipScorer",
+    text: str,
+    keep_tokens: int,
+) -> "TrainableKVCartridge":
+    """Drop the lowest-importance slots from a trained cartridge using KVzip+ scores.
+
+    For a prefix-initialized cartridge, position ``i`` in the cartridge corresponds
+    directly to original token ``i`` from ``text``.  KVzip+ scores assign each original
+    token an importance value; we keep the top ``keep_tokens`` positions (in document
+    order) and discard the rest.
+
+    Because K tensors already have absolute RoPE positions baked in, the pruned cartridge
+    retains correct positional encoding for the kept slots — the model simply attends to a
+    sparse but positionally valid subset of the original prefix.
+
+    Args:
+        cartridge: A fully trained ``TrainableKVCartridge`` (prefix-initialized).
+        scorer: ``KVzipScorer`` instance (model must be loaded with eager attention).
+        text: The original corpus text used to initialize the cartridge.
+        keep_tokens: Number of slots to retain after pruning (must be < cartridge.num_tokens).
+
+    Returns:
+        A new ``TrainableKVCartridge`` with ``keep_tokens`` slots, inheriting the trained
+        K/V values of the kept positions.
+    """
+    if keep_tokens >= cartridge.num_tokens:
+        return cartridge
+
+    # Score the original document tokens — positions 0..num_tokens-1 map 1-to-1 to
+    # cartridge slots for a prefix-initialized cartridge.
+    scores = scorer.score_tokens(text)  # 1-D float32 CPU tensor, length = full doc
+    cart_scores = scores[: cartridge.num_tokens]  # trim to cartridge length
+
+    _, top_indices = torch.topk(cart_scores, keep_tokens)
+    keep_indices = top_indices.sort().values  # preserve document order
+
+    # Subset K/V tensors at the selected positions.
+    new_keys: list[torch.Tensor] = []
+    new_values: list[torch.Tensor] = []
+    for layer_idx in range(cartridge.num_layers):
+        k, v = cartridge.layer(layer_idx)  # [1, heads, num_tokens, head_dim]
+        new_keys.append(k[..., keep_indices, :].detach())
+        new_values.append(v[..., keep_indices, :].detach())
+
+    return TrainableKVCartridge(
+        keys=new_keys,
+        values=new_values,
+        num_frozen_tokens=min(cartridge.num_frozen_tokens, keep_tokens),
+    )
+
+
+@torch.no_grad()
 def initialize_from_prefix_text(
     model,
     tokenizer,

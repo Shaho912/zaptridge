@@ -14,7 +14,7 @@ from torch.optim.lr_scheduler import LambdaLR
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from cartridges.config import DEFAULT_MATRIX
-from cartridges.core import TrainableKVCartridge, initialize_from_prefix_text, initialize_from_kvzip_scores, KVzipScorer
+from cartridges.core import TrainableKVCartridge, initialize_from_prefix_text, initialize_from_kvzip_scores, prune_cartridge_by_kvzip_scores, KVzipScorer
 from cartridges.data.common import stable_hash, write_json
 
 
@@ -283,6 +283,8 @@ def train_cartridge(
     kvzip_init: bool = False,
     kvzip_prefix_tokens: int = 256,
     kvzip_chunk_size: int = 1024,
+    kvzip_prune: bool = False,
+    kvzip_prune_tokens: int | None = None,
 ) -> dict[str, Any]:
     """Train one cartridge budget against a fixed supervision dataset.
 
@@ -445,6 +447,24 @@ def train_cartridge(
     cartridge.save(final_cartridge_path)
     cartridge.load_state_dict(best_state_dict)
     cartridge.save(cartridge_path)
+
+    # Optional: prune the best cartridge down to keep_tokens slots via KVzip+ scores.
+    # The pruned cartridge is saved alongside the full one so the benchmark can evaluate both.
+    pruned_cartridge_path: Path | None = None
+    if kvzip_prune:
+        prune_to = kvzip_prune_tokens if kvzip_prune_tokens is not None else cartridge_tokens // 2
+        # Reuse eager model already loaded; scorer reads from its initial_cache so no extra
+        # forward pass on the full document is needed beyond what score_tokens does internally.
+        prune_scorer = KVzipScorer(model=model, tokenizer=tokenizer, chunk_size=kvzip_chunk_size)
+        pruned = prune_cartridge_by_kvzip_scores(
+            cartridge=cartridge,
+            scorer=prune_scorer,
+            text=examples[0].system_prompt,
+            keep_tokens=prune_to,
+        )
+        pruned.to(device)
+        pruned_cartridge_path = output_dir / f"{slice_id}_pruned_{prune_to}_cartridge.pt"
+        pruned.save(pruned_cartridge_path)
     _save_checkpoint(
         path=checkpoint_path,
         cartridge=cartridge,
@@ -461,6 +481,7 @@ def train_cartridge(
         "cartridge_path": str(cartridge_path.resolve()),
         "final_cartridge_path": str(final_cartridge_path.resolve()),
         "checkpoint_path": str(checkpoint_path.resolve()),
+        "pruned_cartridge_path": str(pruned_cartridge_path.resolve()) if pruned_cartridge_path else None,
         "steps": steps,
         "initial_loss": loss_history[0],
         "best_loss": best_loss,
