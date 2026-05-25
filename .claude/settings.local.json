@@ -4,7 +4,9 @@
       "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\solam\\\\Downloads\\\\AI_Hardware\\\\zaptridges\" -Force -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName })",
       "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\solam\\\\Downloads\\\\AI_Hardware\\\\zaptridges\" -Recurse -Force -File | ForEach-Object { $_.FullName })",
       "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\solam\\\\Downloads\\\\AI_Hardware\\\\zaptridges\" -Recurse -Force -Directory | ForEach-Object { $_.FullName })",
-      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\solam\\\\Downloads\\\\AI_Hardware\\\\cartridges\" -Recurse -Force -File | Where-Object { $_.Extension -eq '.py' } | Select-Object -ExpandProperty FullName | Sort-Object)"
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\solam\\\\Downloads\\\\AI_Hardware\\\\cartridges\" -Recurse -Force -File | Where-Object { $_.Extension -eq '.py' } | Select-Object -ExpandProperty FullName | Sort-Object)",
+      "Bash(git add *)",
+      "Bash(git commit -m 'Revert chunk_size default to 1024 \\(2048 degraded scores\\) *)"
     ]
   }
 }
