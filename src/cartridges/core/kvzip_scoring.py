@@ -52,7 +52,7 @@ class KVzipScorer:
         self,
         model: PreTrainedModel,
         tokenizer: PreTrainedTokenizerBase,
-        chunk_size: int = 512,
+        chunk_size: int = 1024,
         kvzip_plus: bool = True,
         n_sink: int = 4,
     ):

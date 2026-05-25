@@ -226,6 +226,8 @@ def main() -> int:
                         help="Initialize cartridges from KVzip+ importance-scored tokens instead of the first p tokens.")
     parser.add_argument("--kvzip-prefix-tokens", type=int, default=256,
                         help="Number of leading tokens kept unconditionally as prefix in hybrid KVzip+ init (default: 256).")
+    parser.add_argument("--kvzip-chunk-size", type=int, default=1024,
+                        help="Reconstruction chunk size for KVzip+ scoring (default: 1024). Larger = better scores but more VRAM.")
     args = parser.parse_args()
 
     inputs = load_experiment_inputs(args.experiment_name, data_root=args.data_root)
@@ -370,6 +372,7 @@ def main() -> int:
                 validation_interval=args.train_validation_interval,
                 kvzip_init=args.kvzip_init,
                 kvzip_prefix_tokens=args.kvzip_prefix_tokens,
+                kvzip_chunk_size=args.kvzip_chunk_size,
             )
             train_seconds += time.perf_counter() - train_started
             slice_train_summaries[slice_id] = train_summary

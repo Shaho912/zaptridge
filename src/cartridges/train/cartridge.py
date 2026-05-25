@@ -282,6 +282,7 @@ def train_cartridge(
     validation_interval: int = 10,
     kvzip_init: bool = False,
     kvzip_prefix_tokens: int = 256,
+    kvzip_chunk_size: int = 1024,
 ) -> dict[str, Any]:
     """Train one cartridge budget against a fixed supervision dataset.
 
@@ -355,7 +356,7 @@ def train_cartridge(
         if kvzip_init:
             # Score all tokens via KVzip+ context reconstruction and seed the cartridge
             # from the top-scoring positions rather than the first p tokens.
-            scorer = KVzipScorer(model=model, tokenizer=tokenizer)
+            scorer = KVzipScorer(model=model, tokenizer=tokenizer, chunk_size=kvzip_chunk_size)
             cartridge = initialize_from_kvzip_scores(
                 scorer=scorer,
                 model=model,
