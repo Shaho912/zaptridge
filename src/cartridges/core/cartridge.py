@@ -242,8 +242,17 @@ def initialize_from_kvzip_scores(
         _, top_indices = torch.topk(scores, num_tokens)
         top_indices = top_indices.sort().values
 
-    idx = top_indices.to(model.device)
-    num_layers = len(initial_cache.layers)
-    keys = [initial_cache.layers[l].keys.detach().to(model.dtype)[..., idx, :] for l in range(num_layers)]
-    values = [initial_cache.layers[l].values.detach().to(model.dtype)[..., idx, :] for l in range(num_layers)]
+    # Re-run the model on only the selected tokens (in document order) rather than
+    # slicing the full-context KV cache directly.  Slicing would give K tensors with
+    # their original scattered positions (e.g. 3, 7, 42, 203 ...) baked into them via
+    # RoPE.  When those entries are injected as past_key_values the model treats slot i
+    # as position i, so every attention score is computed with the wrong positional
+    # offset — the cartridge becomes unusable and distillation cannot recover.
+    # Running a fresh forward pass on the selected subsequence gives K/V tensors at
+    # sequential positions 0..num_tokens-1, exactly as initialize_from_prefix_text does.
+    selected_ids = input_ids[..., top_indices.to(model.device)]
+    new_outputs = model(input_ids=selected_ids, use_cache=True)
+    past_key_values = _normalize_past_key_values(new_outputs.past_key_values)
+    keys = [layer[0].detach().to(model.dtype) for layer in past_key_values]
+    values = [layer[1].detach().to(model.dtype) for layer in past_key_values]
     return TrainableKVCartridge(keys=keys, values=values, num_frozen_tokens=num_frozen_tokens)
