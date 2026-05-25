@@ -421,6 +421,56 @@ def main() -> int:
         )
         budget_summaries.append(summary)
 
+        # If pruning was requested, collect the pruned cartridge paths from each
+        # slice's train summary and run a separate eval + report for the pruned budget.
+        if args.kvzip_prune:
+            pruned_paths: dict[str, str] = {}
+            for slice_id, ts in slice_train_summaries.items():
+                pruned_path = ts.get("pruned_cartridge_path")
+                if pruned_path:
+                    pruned_paths[slice_id] = pruned_path
+            if pruned_paths:
+                prune_tokens = args.kvzip_prune_tokens or cartridge_tokens // 2
+                pruned_label = f"cartridge_{cartridge_tokens}_pruned_{prune_tokens}"
+                pruned_budget_dir = run_dir / pruned_label
+                pruned_predictions_path = pruned_budget_dir / "predictions.jsonl"
+                run_cartridge_eval(
+                    eval_path=eval_rows_path,
+                    cartridge_paths=pruned_paths,
+                    retrieval_routes=retrieval_routes,
+                    output_path=pruned_predictions_path,
+                    device=args.device,
+                    max_completion_tokens=args.max_completion_tokens,
+                )
+                pruned_summary = write_budget_report(
+                    experiment_name=args.experiment_name,
+                    budget_label=pruned_label,
+                    baseline_path=baseline_predictions_path,
+                    cartridge_path=pruned_predictions_path,
+                    output_dir=pruned_budget_dir / "report",
+                    build_seconds=preparation_seconds + train_seconds,
+                    bootstrap_question_count=bootstrap_question_total,
+                    train_steps=args.train_steps,
+                    cartridge_tokens=prune_tokens,
+                    semantic_judge=args.semantic_judge,
+                    judge_device=args.judge_device or args.device,
+                )
+                write_json(
+                    pruned_budget_dir / "manifest.json",
+                    {
+                        "experiment_name": args.experiment_name,
+                        "cartridge_tokens": prune_tokens,
+                        "trained_tokens": cartridge_tokens,
+                        "pruned_from": budget_label,
+                        "slice_train_summaries": slice_train_summaries,
+                        "cartridge_paths": pruned_paths,
+                        "predictions_path": str(pruned_predictions_path.resolve()),
+                        "report_path": pruned_summary["report_path"],
+                        "semantic_judge": args.semantic_judge,
+                    },
+                )
+                budget_summaries.append(pruned_summary)
+
     # The run manifest is the stable index for everything generated during one invocation.
     aggregate_report = write_run_report(
         experiment_name=args.experiment_name,
