@@ -194,32 +194,57 @@ def initialize_from_kvzip_scores(
     text: str,
     num_tokens: int,
     num_frozen_tokens: int = 1,
+    prefix_tokens: int = 256,
 ) -> TrainableKVCartridge:
-    """Seed a cartridge from the top-scoring token positions according to KVzip+ importance.
+    """Hybrid-init cartridge: fixed prefix + KVzip+-selected tail tokens.
 
-    Unlike ``initialize_from_prefix_text``, which takes the first ``num_tokens`` of the
-    text, this function scores every token via context reconstruction and selects the
-    ``num_tokens`` positions the model most relies on to reconstruct meaning.
+    The budget is split into two parts:
 
-    The prefill forward pass is shared with the scorer's reconstruction phase so we
-    only pay for one full-context prefill instead of two.
+    1. **Prefix** — the first ``prefix_tokens`` positions of the chunk, taken
+       unconditionally.  These provide coherent discourse structure (titles,
+       topic sentences, entity introductions) that scattered KVzip+ tokens
+       cannot supply on their own.
+
+    2. **KVzip+ tail** — the remaining ``num_tokens - prefix_tokens`` slots are
+       filled with the highest-importance tokens from the rest of the document,
+       scored via context reconstruction.
+
+    Both parts are combined in document order and a single fresh forward pass
+    gives them sequential positions 0..num_tokens-1, preserving RoPE correctness.
+
+    If ``prefix_tokens >= num_tokens`` the function falls back to a plain prefix
+    init (equivalent to ``initialize_from_prefix_text``).
 
     Args:
         scorer: A ``KVzipScorer`` whose model must be loaded with attn_implementation="eager".
         model: The same model instance passed to the scorer.
         tokenizer: Matching tokenizer.
         text: Full corpus chunk (typically ``TrainingExample.system_prompt``).
-        num_tokens: Number of KV positions to keep (the cartridge budget ``p``).
+        num_tokens: Total KV positions to keep (the cartridge budget ``p``).
         num_frozen_tokens: Leading positions frozen as attention sinks during training.
+        prefix_tokens: How many leading tokens to keep unconditionally. Default 256.
     """
     encoded = tokenizer(text, return_tensors="pt", add_special_tokens=False)
     input_ids = encoded["input_ids"].to(model.device)
     context_len = input_ids.shape[-1]
 
+    prefix_tokens = min(prefix_tokens, num_tokens, context_len)
+    kvzip_budget = num_tokens - prefix_tokens  # slots filled by importance scoring
+
+    # Fast path: entire budget is prefix — no scoring needed.
+    if kvzip_budget <= 0:
+        return initialize_from_prefix_text(
+            model=model,
+            tokenizer=tokenizer,
+            text=text,
+            num_tokens=num_tokens,
+            num_frozen_tokens=num_frozen_tokens,
+        )
+
     # One prefill shared across scoring and initialization.
     initial_cache = scorer._prefill(input_ids)
 
-    # Reconstruction scoring — mirrors scorer.score_tokens() but reuses initial_cache.
+    # Reconstruction scoring over the full context.
     scores = torch.zeros(context_len, dtype=torch.float32)
     scores[: scorer.n_sink] = float("inf")
 
@@ -235,22 +260,27 @@ def initialize_from_kvzip_scores(
         )
         chunk_start = chunk_end
 
-    # Select top-num_tokens positions, preserving document order.
-    if num_tokens >= context_len:
-        top_indices = torch.arange(context_len)
-    else:
-        _, top_indices = torch.topk(scores, num_tokens)
-        top_indices = top_indices.sort().values
+    # --- Part 1: prefix indices (always 0..prefix_tokens-1) ---
+    prefix_range = torch.arange(prefix_tokens)
 
-    # Re-run the model on only the selected tokens (in document order) rather than
-    # slicing the full-context KV cache directly.  Slicing would give K tensors with
-    # their original scattered positions (e.g. 3, 7, 42, 203 ...) baked into them via
-    # RoPE.  When those entries are injected as past_key_values the model treats slot i
-    # as position i, so every attention score is computed with the wrong positional
-    # offset — the cartridge becomes unusable and distillation cannot recover.
-    # Running a fresh forward pass on the selected subsequence gives K/V tensors at
-    # sequential positions 0..num_tokens-1, exactly as initialize_from_prefix_text does.
-    selected_ids = input_ids[..., top_indices.to(model.device)]
+    # --- Part 2: top-kvzip_budget indices from the tail only ---
+    tail_scores = scores[prefix_tokens:]  # shape: [context_len - prefix_tokens]
+    tail_len = tail_scores.shape[0]
+    if kvzip_budget >= tail_len:
+        # Budget covers the entire tail — take all of it.
+        kvzip_indices = torch.arange(prefix_tokens, context_len)
+    else:
+        _, rel_indices = torch.topk(tail_scores, kvzip_budget)
+        # Convert relative tail indices back to absolute positions, then sort.
+        kvzip_indices = (rel_indices + prefix_tokens).sort().values
+
+    # Merge both parts in document order (no duplicates — ranges are disjoint).
+    all_indices = torch.cat([prefix_range, kvzip_indices]).sort().values
+
+    # Fresh forward pass on the selected tokens gives sequential positions
+    # 0..num_tokens-1, preserving RoPE correctness (see RoPE note in
+    # initialize_from_prefix_text).
+    selected_ids = input_ids[..., all_indices.to(model.device)]
     new_outputs = model(input_ids=selected_ids, use_cache=True)
     past_key_values = _normalize_past_key_values(new_outputs.past_key_values)
     keys = [layer[0].detach().to(model.dtype) for layer in past_key_values]

@@ -281,6 +281,7 @@ def train_cartridge(
     validation_examples: int = 16,
     validation_interval: int = 10,
     kvzip_init: bool = False,
+    kvzip_prefix_tokens: int = 256,
 ) -> dict[str, Any]:
     """Train one cartridge budget against a fixed supervision dataset.
 
@@ -362,6 +363,7 @@ def train_cartridge(
                 text=examples[0].system_prompt,
                 num_tokens=cartridge_tokens,
                 num_frozen_tokens=num_frozen_tokens,
+                prefix_tokens=kvzip_prefix_tokens,
             )
         else:
             # Default: seed from the first ``cartridge_tokens`` positions of the system prompt.
