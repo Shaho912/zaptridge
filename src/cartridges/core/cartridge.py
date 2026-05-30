@@ -137,20 +137,22 @@ class TrainableKVCartridge(nn.Module):
     def load(cls, path: str | Path, device: str | torch.device | None = None) -> "TrainableKVCartridge":
         """Load a saved cartridge artifact and optionally move it onto a target device."""
         checkpoint = torch.load(path, map_location=device or "cpu", weights_only=False)
-        keys = []
-        values = []
         num_frozen_tokens = checkpoint["num_frozen_tokens"]
-        for frozen_key, train_key, frozen_value, train_value in zip(
-            checkpoint["frozen_keys"],
-            checkpoint["keys"],
-            checkpoint["frozen_values"],
-            checkpoint["values"],
-            strict=True,
-        ):
-            key = torch.cat([frozen_key, train_key], dim=-2) if num_frozen_tokens else train_key
-            value = torch.cat([frozen_value, train_value], dim=-2) if num_frozen_tokens else train_value
-            keys.append(key)
-            values.append(value)
+        if num_frozen_tokens:
+            keys = []
+            values = []
+            for frozen_key, train_key, frozen_value, train_value in zip(
+                checkpoint["frozen_keys"],
+                checkpoint["keys"],
+                checkpoint["frozen_values"],
+                checkpoint["values"],
+                strict=True,
+            ):
+                keys.append(torch.cat([frozen_key, train_key], dim=-2))
+                values.append(torch.cat([frozen_value, train_value], dim=-2))
+        else:
+            keys = list(checkpoint["keys"])
+            values = list(checkpoint["values"])
         cartridge = cls(keys=keys, values=values, num_frozen_tokens=num_frozen_tokens)
         if device is not None:
             cartridge.to(device)
