@@ -278,10 +278,13 @@ def main() -> int:
     server_max_model_len = args.chunk_tokens + max(args.max_completion_tokens + 256, 512)
 
     prepare_started = time.perf_counter()
+    phase_timings: dict[str, float] = {}
     bootstrap_artifacts: list[dict[str, object]] = []
     teacher_answers_by_slice: dict[str, list[dict[str, str]]] = {}
     training_dataset_paths: dict[str, str] = {}
     bootstrap_question_total = 0
+    _bootstrap_q_seconds = 0.0
+    _teacher_ans_seconds = 0.0
     if managed_server:
         server = _start_vllm_server(
             gpu_index=args.gpu,
@@ -298,6 +301,7 @@ def main() -> int:
             slice_dir = bootstrap_dir / slice_id
             bootstrap_questions_path = slice_dir / "questions.txt"
             teacher_answers_path = slice_dir / "teacher_answers.jsonl"
+            _t0 = time.perf_counter()
             bootstrap_examples = generate_bootstrap_questions(
                 corpus_text=str(slice_record["text"]),
                 eval_spec=eval_spec,
@@ -306,6 +310,10 @@ def main() -> int:
                 api_key=args.api_key,
                 num_questions=args.bootstrap_count,
             )
+            _dt = time.perf_counter() - _t0
+            _bootstrap_q_seconds += _dt
+            print(f"[timing] generate_bootstrap_questions slice={slice_id}: {_dt:.1f}s")
+            _t0 = time.perf_counter()
             teacher_answers = generate_teacher_answers(
                 corpus_text=str(slice_record["text"]),
                 bootstrap_examples=bootstrap_examples,
@@ -314,6 +322,9 @@ def main() -> int:
                 api_key=args.api_key,
                 max_completion_tokens=args.max_completion_tokens,
             )
+            _dt = time.perf_counter() - _t0
+            _teacher_ans_seconds += _dt
+            print(f"[timing] generate_teacher_answers slice={slice_id}: {_dt:.1f}s")
             teacher_answers_by_slice[slice_id] = teacher_answers
             bootstrap_question_total += len(bootstrap_examples)
             bootstrap_artifacts.append(
@@ -328,11 +339,18 @@ def main() -> int:
         if managed_server and server is not None:
             _stop_vllm_server(server, port=args.port, gpu_index=args.gpu)
 
+    phase_timings["generate_bootstrap_questions_seconds"] = _bootstrap_q_seconds
+    phase_timings["generate_teacher_answers_seconds"] = _teacher_ans_seconds
+    print(f"[timing] generate_bootstrap_questions total: {_bootstrap_q_seconds:.1f}s")
+    print(f"[timing] generate_teacher_answers total: {_teacher_ans_seconds:.1f}s")
+
     # Convert teacher answers into token-level supervision after vLLM is gone so the local
     # HF teacher can reuse the GPU safely on single-card machines.
+    _build_dataset_seconds = 0.0
     for slice_record in slices:
         slice_id = str(slice_record["chunk_id"])
         training_dataset_path = bootstrap_dir / slice_id / "train_dataset.jsonl"
+        _t0 = time.perf_counter()
         build_training_dataset(
             corpus_text=str(slice_record["text"]),
             slice_id=slice_id,
@@ -341,15 +359,23 @@ def main() -> int:
             device=args.device,
             top_logprobs=5,
         )
+        _dt = time.perf_counter() - _t0
+        _build_dataset_seconds += _dt
+        print(f"[timing] build_training_dataset slice={slice_id}: {_dt:.1f}s")
         training_dataset_paths[slice_id] = str(training_dataset_path.resolve())
+    phase_timings["build_training_dataset_seconds"] = _build_dataset_seconds
+    print(f"[timing] build_training_dataset total: {_build_dataset_seconds:.1f}s")
     preparation_seconds = time.perf_counter() - prepare_started
 
+    _t0 = time.perf_counter()
     baseline_records = run_local_hf_matched_eval(
         eval_path=eval_rows_path,
         output_path=baseline_predictions_path,
         device=args.device,
         max_completion_tokens=args.max_completion_tokens,
     )
+    phase_timings["baseline_eval_seconds"] = time.perf_counter() - _t0
+    print(f"[timing] run_local_hf_matched_eval: {phase_timings['baseline_eval_seconds']:.1f}s")
 
     budget_summaries: list[dict[str, object]] = []
     for cartridge_tokens in args.cartridge_tokens:
@@ -380,12 +406,17 @@ def main() -> int:
                 kvzip_prune=args.kvzip_prune,
                 kvzip_prune_tokens=args.kvzip_prune_tokens,
             )
-            train_seconds += time.perf_counter() - train_started
+            _dt = time.perf_counter() - train_started
+            train_seconds += _dt
+            print(f"[timing] train_cartridge {budget_label} slice={slice_id}: {_dt:.1f}s")
             slice_train_summaries[slice_id] = train_summary
             cartridge_paths[slice_id] = str(train_summary["cartridge_path"])
+        phase_timings[f"train_cartridge_seconds_{budget_label}"] = train_seconds
+        print(f"[timing] train_cartridge {budget_label} total: {train_seconds:.1f}s")
         cartridge_predictions_path = budget_dir / "predictions.jsonl"
         # Cartridge inference uses the same HF backend as the matched baseline, with top-1
         # chunk routing selecting which slice-specific cache to inject for each question.
+        _t0 = time.perf_counter()
         run_cartridge_eval(
             eval_path=eval_rows_path,
             cartridge_paths=cartridge_paths,
@@ -394,6 +425,8 @@ def main() -> int:
             device=args.device,
             max_completion_tokens=args.max_completion_tokens,
         )
+        phase_timings[f"cartridge_eval_seconds_{budget_label}"] = time.perf_counter() - _t0
+        print(f"[timing] run_cartridge_eval {budget_label}: {phase_timings[f'cartridge_eval_seconds_{budget_label}']:.1f}s")
         summary = write_budget_report(
             experiment_name=args.experiment_name,
             budget_label=budget_label,
@@ -506,8 +539,12 @@ def main() -> int:
             for item in budget_summaries
         ],
         "aggregate_report": aggregate_report,
+        "phase_timings": phase_timings,
     }
     write_json(run_dir / "run_manifest.json", run_manifest)
+    print("\n[timing] === phase summary ===")
+    for phase, seconds in phase_timings.items():
+        print(f"[timing]   {phase}: {seconds:.1f}s")
     _update_latest_pointer(run_dir, output_root=output_root, experiment_name=args.experiment_name)
 
     print(json.dumps(run_manifest, indent=2))
