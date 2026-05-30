@@ -157,6 +157,145 @@ class TrainableKVCartridge(nn.Module):
         return cartridge
 
 
+class DeltaKVCartridge(nn.Module):
+    """Frozen base cartridge + small trainable delta slots for incremental updates.
+
+    The base K/V tensors are held fixed (requires_grad=False) so existing knowledge
+    is never overwritten. Only the delta tensors are updated during fine-tuning.
+    ``as_cache()`` concatenates [base | delta] for all layers, giving the model
+    access to both the original compressed context and newly learned Q&A slots.
+
+    After training, call ``merge()`` to export a standard ``TrainableKVCartridge``
+    that can be evaluated with the existing eval infrastructure.
+    """
+
+    def __init__(
+        self,
+        base_keys: list[torch.Tensor],
+        base_values: list[torch.Tensor],
+        delta_keys: list[torch.Tensor],
+        delta_values: list[torch.Tensor],
+    ):
+        super().__init__()
+        n = len(base_keys)
+        if not (len(base_values) == n and len(delta_keys) == n and len(delta_values) == n):
+            raise ValueError("All key/value lists must have the same number of layers.")
+
+        self.num_layers = n
+        self.num_base_tokens = base_keys[0].shape[-2]
+        self.num_delta_tokens = delta_keys[0].shape[-2]
+        self.num_tokens = self.num_base_tokens + self.num_delta_tokens
+
+        # Frozen base — stored as non-trainable parameters so .to(device) works.
+        self.base_keys = nn.ParameterList(
+            [nn.Parameter(k.detach().clone(), requires_grad=False) for k in base_keys]
+        )
+        self.base_values = nn.ParameterList(
+            [nn.Parameter(v.detach().clone(), requires_grad=False) for v in base_values]
+        )
+        # Trainable delta slots.
+        self.delta_keys = nn.ParameterList(
+            [nn.Parameter(k.detach().clone()) for k in delta_keys]
+        )
+        self.delta_values = nn.ParameterList(
+            [nn.Parameter(v.detach().clone()) for v in delta_values]
+        )
+
+    @classmethod
+    def from_base_cartridge(
+        cls,
+        base_cartridge: TrainableKVCartridge,
+        delta_keys: list[torch.Tensor],
+        delta_values: list[torch.Tensor],
+    ) -> "DeltaKVCartridge":
+        """Construct from an existing loaded cartridge plus new delta tensors."""
+        base_keys = []
+        base_values = []
+        for i in range(base_cartridge.num_layers):
+            k, v = base_cartridge.layer(i)
+            base_keys.append(k)
+            base_values.append(v)
+        return cls(
+            base_keys=base_keys,
+            base_values=base_values,
+            delta_keys=delta_keys,
+            delta_values=delta_values,
+        )
+
+    def layer(self, index: int) -> tuple[torch.Tensor, torch.Tensor]:
+        """Return concatenated [base | delta] K/V for one layer."""
+        k = torch.cat([self.base_keys[index], self.delta_keys[index]], dim=-2)
+        v = torch.cat([self.base_values[index], self.delta_values[index]], dim=-2)
+        return k, v
+
+    def as_legacy_past_key_values(self) -> tuple[tuple[torch.Tensor, torch.Tensor], ...]:
+        return tuple(self.layer(i) for i in range(self.num_layers))
+
+    def as_cache(self, model_config) -> DynamicCache:
+        return DynamicCache(ddp_cache_data=self.as_legacy_past_key_values(), config=model_config)
+
+    def canonical_kv_bytes(self) -> int:
+        total = 0
+        for k, v in self.as_legacy_past_key_values():
+            total += k.numel() * k.element_size()
+            total += v.numel() * v.element_size()
+        return total
+
+    def save_delta(self, path: str | Path) -> None:
+        """Persist only the delta tensors (the frozen base is not re-saved)."""
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        torch.save(
+            {
+                "num_delta_tokens": self.num_delta_tokens,
+                "delta_keys": [k.detach().cpu() for k in self.delta_keys],
+                "delta_values": [v.detach().cpu() for v in self.delta_values],
+            },
+            path,
+        )
+
+    def merge(self) -> TrainableKVCartridge:
+        """Export the combined [base | delta] cache as a standard TrainableKVCartridge.
+
+        The merged cartridge is compatible with all existing eval infrastructure.
+        num_frozen_tokens=0 since the base slots were already specialized during
+        the original training run and the delta added novel information on top.
+        """
+        keys, values = [], []
+        for i in range(self.num_layers):
+            k, v = self.layer(i)
+            keys.append(k)
+            values.append(v)
+        return TrainableKVCartridge(keys=keys, values=values, num_frozen_tokens=0)
+
+
+@torch.no_grad()
+def initialize_delta_from_text(
+    model,
+    tokenizer,
+    text: str,
+    base_tokens: int,
+    delta_tokens: int,
+) -> tuple[list[torch.Tensor], list[torch.Tensor]]:
+    """Initialize delta K/V slots from positions base_tokens..base_tokens+delta_tokens-1.
+
+    Runs a forward pass on the first ``base_tokens + delta_tokens`` tokens of ``text``
+    and returns only the tail ``delta_tokens`` positions from the cache. This gives the
+    delta slots sequential RoPE positions that continue directly after the base cartridge,
+    avoiding any positional collision with the base's 0..base_tokens-1 range.
+    """
+    encoded = tokenizer(text, return_tensors="pt", add_special_tokens=False)
+    input_ids = encoded["input_ids"]
+    num_tokens = min(base_tokens + delta_tokens, input_ids.shape[-1])
+    input_ids = input_ids[..., :num_tokens].to(model.device)
+    outputs = model(input_ids=input_ids, use_cache=True)
+    past_key_values = _normalize_past_key_values(outputs.past_key_values)
+    # Take the last delta_tokens positions (continuing from where base ends).
+    keys = [layer[0][..., -delta_tokens:, :].detach().to(model.dtype) for layer in past_key_values]
+    values = [layer[1][..., -delta_tokens:, :].detach().to(model.dtype) for layer in past_key_values]
+    return keys, values
+
+
 @torch.no_grad()
 def prune_cartridge_by_kvzip_scores(
     cartridge: "TrainableKVCartridge",
