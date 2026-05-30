@@ -7,7 +7,8 @@
       "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\solam\\\\Downloads\\\\AI_Hardware\\\\cartridges\" -Recurse -Force -File | Where-Object { $_.Extension -eq '.py' } | Select-Object -ExpandProperty FullName | Sort-Object)",
       "Bash(git add *)",
       "Bash(git commit -m 'Revert chunk_size default to 1024 \\(2048 degraded scores\\) *)",
-      "Bash(git commit -m 'Add per-phase timing instrumentation to run_benchmark.py *)"
+      "Bash(git commit -m 'Add per-phase timing instrumentation to run_benchmark.py *)",
+      "Bash(git commit -m 'Add update_cartridge.py for incremental cartridge fine-tuning *)"
     ]
   }
 }
