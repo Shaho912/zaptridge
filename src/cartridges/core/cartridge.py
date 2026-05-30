@@ -279,22 +279,37 @@ def initialize_delta_from_text(
     base_tokens: int,
     delta_tokens: int,
 ) -> tuple[list[torch.Tensor], list[torch.Tensor]]:
-    """Initialize delta K/V slots from positions base_tokens..base_tokens+delta_tokens-1.
+    """Initialize delta K/V slots from the tail of a forward pass on ``text``.
 
-    Runs a forward pass on the first ``base_tokens + delta_tokens`` tokens of ``text``
-    and returns only the tail ``delta_tokens`` positions from the cache. This gives the
-    delta slots sequential RoPE positions that continue directly after the base cartridge,
-    avoiding any positional collision with the base's 0..base_tokens-1 range.
+    Runs a forward pass on up to ``base_tokens + delta_tokens`` tokens of ``text``
+    and takes the last ``delta_tokens`` positions from the resulting cache. When the
+    text is shorter than needed, the remaining slots are filled with small random
+    values so the returned tensors always have exactly ``delta_tokens`` positions.
     """
     encoded = tokenizer(text, return_tensors="pt", add_special_tokens=False)
     input_ids = encoded["input_ids"]
-    num_tokens = min(base_tokens + delta_tokens, input_ids.shape[-1])
+    text_len = input_ids.shape[-1]
+    num_tokens = min(base_tokens + delta_tokens, text_len)
     input_ids = input_ids[..., :num_tokens].to(model.device)
     outputs = model(input_ids=input_ids, use_cache=True)
     past_key_values = _normalize_past_key_values(outputs.past_key_values)
-    # Take the last delta_tokens positions (continuing from where base ends).
-    keys = [layer[0][..., -delta_tokens:, :].detach().to(model.dtype) for layer in past_key_values]
-    values = [layer[1][..., -delta_tokens:, :].detach().to(model.dtype) for layer in past_key_values]
+
+    # How many positions the forward pass actually produced for the delta budget.
+    actual = min(delta_tokens, num_tokens)
+    keys_raw = [layer[0][..., -actual:, :].detach().to(model.dtype) for layer in past_key_values]
+    values_raw = [layer[1][..., -actual:, :].detach().to(model.dtype) for layer in past_key_values]
+
+    if actual == delta_tokens:
+        return keys_raw, values_raw
+
+    # Pad remaining slots with small random noise so shape is always [*, delta_tokens, *].
+    pad = delta_tokens - actual
+    keys, values = [], []
+    for k, v in zip(keys_raw, values_raw):
+        pk = torch.randn(*k.shape[:-2], pad, k.shape[-1], dtype=k.dtype, device=k.device) * 0.01
+        pv = torch.randn(*v.shape[:-2], pad, v.shape[-1], dtype=v.dtype, device=v.device) * 0.01
+        keys.append(torch.cat([k, pk], dim=-2))
+        values.append(torch.cat([v, pv], dim=-2))
     return keys, values
 
 
