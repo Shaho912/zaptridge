@@ -1,5 +1,96 @@
 # KV Cartridges: Static Corpus and Dynamic Conversation Memory
 
+## Background: Base Implementation
+
+This work is built on top of [shreyansh26/cartridges](https://github.com/shreyansh26/cartridges),
+a clean single-GPU reproduction of the KV cartridge idea from the HazyResearch Cartridges paper
+(Eyuboglu et al., 2025). We use this implementation as the foundation for two reasons:
+
+1. **It is a faithful, minimal reproduction.** The original HazyResearch codebase targets
+   multi-GPU distributed training. shreyansh26's version strips that down to a single-GPU
+   pipeline that is easier to instrument, modify, and reason about.
+
+2. **It has a working end-to-end benchmark.** The `run_benchmark.py` orchestrator handles
+   the full pipeline — vLLM server lifecycle, bootstrap generation, teacher supervision,
+   cartridge training, retrieval routing, and eval — in a single script with clear entry points
+   for each phase.
+
+Our repo ([Shaho912/zaptridge](https://github.com/Shaho912/zaptridge)) extends this base with:
+- Per-phase timing instrumentation
+- Training step and bootstrap count ablations
+- KVzip+ guided initialization experiments (see separate notes)
+- Dynamic conversation cartridge pipeline
+- Delta slot incremental update mechanism
+
+All experiments run on a DGX server using an NVIDIA B200 MIG GPU with Qwen3-4B as the base model.
+
+---
+
+## Ablation Study: Training Steps
+
+**Setup:** wikipedia_india corpus, 120 bootstrap questions, 1024-token cartridge budget.
+Varying only `--train-steps`.
+
+| Steps | Exact match | Semantic match | Train time | Total build |
+|---|---|---|---|---|
+| 240 (default) | 0.65 | 0.95 | 28.9s | 85.9s |
+| 120 | 0.65 | 0.95 | 18.5s | 72.3s |
+| **60** | **0.70** | **0.95** | **12.6s** | **70.2s** |
+| 30 | 0.55 | 0.95 | 8.8s | 66.5s |
+
+**Findings:**
+
+- **60 steps is the sweet spot.** Exact match is equal to or better than 240 steps, training
+  takes 57% less time, and total build time drops from 85.9s to 70.2s.
+- **30 steps is too few.** Exact match degrades to 0.55 — the cartridge does not have enough
+  gradient steps to converge.
+- **Semantic match is stable at 0.95 across all configs.** The cartridge semantically
+  preserves the corpus information even at 30 steps; only exact phrasing suffers.
+- **The training loop is not the bottleneck.** Even eliminating training entirely saves
+  only ~29s out of ~86s total. The fixed costs (bootstrap generation + training dataset
+  construction) dominate.
+
+Phase timing breakdown (at 240 steps, from instrumentation added to `run_benchmark.py`):
+
+| Phase | Time | % of total |
+|---|---|---|
+| Bootstrap question generation | 25.1s | 29% |
+| Build training dataset | 31.9s | 37% |
+| Train cartridge (240 steps) | 28.9s | 34% |
+| Baseline eval | 11.1s | 13% |
+| Cartridge eval | 7.2s | 8% |
+
+---
+
+## Ablation Study: Bootstrap Question Count
+
+**Setup:** wikipedia_india corpus, 60 train steps (optimal from above), 1024-token cartridge.
+Varying only `--bootstrap-count`.
+
+| Bootstrap | Exact match | Semantic match | Bootstrap time | Build dataset | Total build |
+|---|---|---|---|---|---|
+| **120 (default)** | **0.80** | **0.95** | 26.0s | 32.8s | **72.1s** |
+| 60 | 0.50 | 0.95 | 12.3s | 18.4s | 46.7s |
+| 30 | 0.60 | 0.95 | 7.4s | 10.9s | 30.0s |
+| 15 | 0.60 | 0.95 | 5.6s | 6.9s | 23.2s |
+
+**Findings:**
+
+- **120 bootstrap questions is the minimum for good quality.** Exact match drops sharply
+  to 0.50 at 60 questions. Below 60, quality partially recovers to 0.60 but does not improve
+  further — there is a threshold effect rather than a smooth degradation.
+- **Bootstrap count drives build time linearly.** Both bootstrap generation and training
+  dataset construction scale proportionally: halving bootstrap count roughly halves both
+  phases. Cutting from 120 → 15 reduces total build from 72s → 23s.
+- **Semantic match is 0.95 everywhere.** Even with 15 bootstrap questions, the cartridge
+  semantically preserves the corpus. The exact match gap reflects phrasing precision, not
+  knowledge loss.
+- **Optimal configuration: 120 bootstrap + 60 steps → 72s build, 0.80 exact / 0.95 semantic.**
+  This beats the default (240 steps, 120 bootstrap) which takes 85.9s and achieves only 0.65
+  exact match — faster and better.
+
+---
+
 ## Part 1: Static Corpus Cartridge
 
 ### What It Is
