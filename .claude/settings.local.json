@@ -12,7 +12,10 @@
       "Bash(git commit -m 'Add DeltaKVCartridge for zero-forgetting incremental updates *)",
       "Bash(git commit -m 'Fix TrainableKVCartridge.load\\(\\) for num_frozen_tokens=0 *)",
       "Bash(git commit -m 'Fix initialize_delta_from_text for short texts *)",
-      "Bash(git commit -m 'Add compress_conversation.py for dynamic session memory cartridges *)"
+      "Bash(git commit -m 'Add compress_conversation.py for dynamic session memory cartridges *)",
+      "Bash(git commit -m 'Add dynamic cartridge findings document *)",
+      "Bash(git commit -m 'Rewrite findings doc: static corpus first, then dynamic cartridge *)",
+      "Bash(git commit -m 'Add base implementation context and ablation results to findings doc *)"
     ]
   }
 }
