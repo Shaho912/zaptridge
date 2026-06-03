@@ -8,7 +8,7 @@ from typing import Any
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from cartridges.config import DEFAULT_MATRIX
+from cartridges.config import DEFAULT_MATRIX, DEFAULT_HF_MODEL_ID
 from cartridges.core import TrainableKVCartridge
 from cartridges.eval.common import (
     EvalRecord,
@@ -130,9 +130,9 @@ def run_cartridge_eval(
         retrieval_routes=retrieval_routes,
     )
 
-    tokenizer = AutoTokenizer.from_pretrained(DEFAULT_MATRIX.model_id)
+    tokenizer = AutoTokenizer.from_pretrained(DEFAULT_HF_MODEL_ID)
     model = AutoModelForCausalLM.from_pretrained(
-        DEFAULT_MATRIX.model_id,
+        DEFAULT_HF_MODEL_ID,
         dtype=torch.bfloat16 if device.startswith("cuda") else torch.float32,
         attn_implementation="sdpa",
     )

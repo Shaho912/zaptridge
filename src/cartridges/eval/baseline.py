@@ -8,7 +8,7 @@ import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from cartridges.clients import VLLMClient
-from cartridges.config import DEFAULT_MATRIX
+from cartridges.config import DEFAULT_MATRIX, DEFAULT_HF_MODEL_ID
 from cartridges.eval.common import (
     EvalRecord,
     build_messages,
@@ -60,7 +60,7 @@ def run_vllm_quality_eval(
     client = VLLMClient(
         base_url=base_url,
         api_key=api_key,
-        model_id=DEFAULT_MATRIX.model_id,
+        model_id=DEFAULT_HF_MODEL_ID,
     )
     parity = client.probe_tokenizer_parity()
     if not parity.matches:
@@ -70,7 +70,7 @@ def run_vllm_quality_eval(
         )
 
     model_config = AutoModelForCausalLM.from_pretrained(
-        DEFAULT_MATRIX.model_id,
+        DEFAULT_HF_MODEL_ID,
         dtype=torch.bfloat16,
         device_map="cpu",
     ).config
@@ -140,9 +140,9 @@ def run_local_hf_matched_eval(
     if max_samples is not None:
         rows = rows[:max_samples]
 
-    tokenizer = AutoTokenizer.from_pretrained(DEFAULT_MATRIX.model_id)
+    tokenizer = AutoTokenizer.from_pretrained(DEFAULT_HF_MODEL_ID)
     model = AutoModelForCausalLM.from_pretrained(
-        DEFAULT_MATRIX.model_id,
+        DEFAULT_HF_MODEL_ID,
         dtype=torch.bfloat16 if device.startswith("cuda") else torch.float32,
         attn_implementation="sdpa",
     )

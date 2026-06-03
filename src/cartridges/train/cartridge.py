@@ -13,7 +13,7 @@ from torch.optim import AdamW
 from torch.optim.lr_scheduler import LambdaLR
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from cartridges.config import DEFAULT_MATRIX
+from cartridges.config import DEFAULT_MATRIX, DEFAULT_HF_MODEL_ID
 from cartridges.core import TrainableKVCartridge, initialize_from_prefix_text, initialize_from_kvzip_scores, prune_cartridge_by_kvzip_scores, KVzipScorer
 from cartridges.data.common import stable_hash, write_json
 
@@ -317,13 +317,13 @@ def train_cartridge(
     if resume_from is None:
         _set_training_seed(seed)
 
-    tokenizer = AutoTokenizer.from_pretrained(DEFAULT_MATRIX.model_id)
+    tokenizer = AutoTokenizer.from_pretrained(DEFAULT_HF_MODEL_ID)
     # KVzip+ scoring requires output_attentions=True, which SDPA does not support.
     # When kvzip_init is enabled we load with eager attention for the full session;
     # training is slightly slower but avoids loading two model copies simultaneously.
     attn_implementation = "eager" if kvzip_init else "sdpa"
     model = AutoModelForCausalLM.from_pretrained(
-        DEFAULT_MATRIX.model_id,
+        DEFAULT_HF_MODEL_ID,
         dtype=torch.bfloat16 if device.startswith("cuda") else torch.float32,
         attn_implementation=attn_implementation,
     )
@@ -337,7 +337,7 @@ def train_cartridge(
         "slice_id": slice_id,
         "cartridge_tokens": cartridge_tokens,
         "num_frozen_tokens": num_frozen_tokens,
-        "model_id": DEFAULT_MATRIX.model_id,
+        "model_id": DEFAULT_HF_MODEL_ID,
         "seed": seed,
         "validation_examples": len(validation_subset),
         "validation_interval": validation_interval,

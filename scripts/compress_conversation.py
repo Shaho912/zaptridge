@@ -31,7 +31,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from cartridges.config import DEFAULT_MATRIX  # noqa: E402
+from cartridges.config import DEFAULT_HF_MODEL_ID  # noqa: E402
 from cartridges.data.common import stable_hash, write_json  # noqa: E402
 from cartridges.train.cartridge import train_cartridge  # noqa: E402
 
@@ -224,9 +224,9 @@ def main() -> int:
     # --- Phase 1: build teacher supervision ---
     t0 = time.perf_counter()
     print("\n[1/2] Building teacher supervision...")
-    tokenizer = AutoTokenizer.from_pretrained(DEFAULT_MATRIX.model_id)
+    tokenizer = AutoTokenizer.from_pretrained(DEFAULT_HF_MODEL_ID)
     model = AutoModelForCausalLM.from_pretrained(
-        DEFAULT_MATRIX.model_id,
+        DEFAULT_HF_MODEL_ID,
         dtype=torch.bfloat16 if args.device.startswith("cuda") else torch.float32,
         attn_implementation="sdpa",
     )

@@ -16,6 +16,9 @@ class CompatibilityMatrix:
 
 
 DEFAULT_MODEL_ID = os.environ.get("CARTRIDGES_MODEL_ID", "Qwen/Qwen3-4B")
+# Local HF model override — set via CARTRIDGES_HF_MODEL_ID or --model-id CLI flag.
+# Falls back to DEFAULT_MODEL_ID so existing behaviour is unchanged when unset.
+DEFAULT_HF_MODEL_ID = os.environ.get("CARTRIDGES_HF_MODEL_ID", DEFAULT_MODEL_ID)
 DEFAULT_VLLM_PORT = int(os.environ.get("CARTRIDGES_VLLM_PORT", "8000"))
 DISALLOWED_GPUS = (6, 7)
 PREFERRED_GPU_ORDER = (3, 5)

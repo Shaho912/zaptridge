@@ -21,7 +21,7 @@ import torch.nn.functional as F
 from transformers import AutoModel, AutoModelForCausalLM, AutoTokenizer
 
 from cartridges.clients import VLLMClient
-from cartridges.config import DEFAULT_MATRIX
+from cartridges.config import DEFAULT_MATRIX, DEFAULT_HF_MODEL_ID
 from cartridges.data.common import stable_hash, write_json, write_jsonl
 
 JUDGE_SYSTEM_PROMPT = """You are a strict answer-equivalence judge.
@@ -454,9 +454,9 @@ def build_training_dataset(
     if not answer_records:
         raise ValueError("Cannot build a training dataset without teacher answer records.")
 
-    tokenizer = AutoTokenizer.from_pretrained(DEFAULT_MATRIX.model_id)
+    tokenizer = AutoTokenizer.from_pretrained(DEFAULT_HF_MODEL_ID)
     model = AutoModelForCausalLM.from_pretrained(
-        DEFAULT_MATRIX.model_id,
+        DEFAULT_HF_MODEL_ID,
         dtype=torch.bfloat16 if device.startswith("cuda") else torch.float32,
         attn_implementation="sdpa",
     )
@@ -595,7 +595,7 @@ def _safe_mean(values: list[float]) -> float | None:
 class SemanticEquivalenceJudge:
     """Judge semantic equivalence with a cheap heuristic plus a strict model fallback."""
 
-    def __init__(self, *, device: str, model_id: str = DEFAULT_MATRIX.model_id) -> None:
+    def __init__(self, *, device: str, model_id: str = DEFAULT_HF_MODEL_ID) -> None:
         """Load the local model used to evaluate relaxed answer equivalence."""
         self.device = device
         self.tokenizer = AutoTokenizer.from_pretrained(model_id)

@@ -18,7 +18,8 @@ _early = argparse.ArgumentParser(add_help=False)
 _early.add_argument("--model-id", default=None)
 _early_args, _ = _early.parse_known_args()
 if _early_args.model_id:
-    os.environ["CARTRIDGES_MODEL_ID"] = _early_args.model_id
+    # Only override the LOCAL HF model — leave CARTRIDGES_MODEL_ID (vLLM server) unchanged.
+    os.environ["CARTRIDGES_HF_MODEL_ID"] = _early_args.model_id
 
 import httpx
 import torch
