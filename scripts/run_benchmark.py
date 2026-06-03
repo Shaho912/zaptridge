@@ -12,6 +12,14 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+# Parse --model-id before importing cartridge modules so CARTRIDGES_MODEL_ID is
+# set before config.py evaluates DEFAULT_MATRIX (which happens at import time).
+_early = argparse.ArgumentParser(add_help=False)
+_early.add_argument("--model-id", default=None)
+_early_args, _ = _early.parse_known_args()
+if _early_args.model_id:
+    os.environ["CARTRIDGES_MODEL_ID"] = _early_args.model_id
+
 import httpx
 import torch
 
@@ -265,6 +273,9 @@ def main() -> int:
                         help="Target slot count after KVzip+ pruning (default: half of --cartridge-tokens).")
     parser.add_argument("--profile-flops", action="store_true",
                         help="Profile FLOPs during cartridge training and report TOPs.")
+    parser.add_argument("--model-id", default=None,
+                        help="Override the model ID (default: Qwen/Qwen3-4B). "
+                             "E.g. --model-id Qwen/Qwen3-0.6B")
     args = parser.parse_args()
 
     inputs = load_experiment_inputs(args.experiment_name, data_root=args.data_root)
