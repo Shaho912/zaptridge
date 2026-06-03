@@ -15,7 +15,8 @@
       "Bash(git commit -m 'Add compress_conversation.py for dynamic session memory cartridges *)",
       "Bash(git commit -m 'Add dynamic cartridge findings document *)",
       "Bash(git commit -m 'Rewrite findings doc: static corpus first, then dynamic cartridge *)",
-      "Bash(git commit -m 'Add base implementation context and ablation results to findings doc *)"
+      "Bash(git commit -m 'Add base implementation context and ablation results to findings doc *)",
+      "Bash(git commit -m 'Add --model-id flag to run_benchmark.py *)"
     ]
   }
 }
