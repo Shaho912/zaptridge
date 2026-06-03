@@ -285,6 +285,7 @@ def train_cartridge(
     kvzip_chunk_size: int = 1024,
     kvzip_prune: bool = False,
     kvzip_prune_tokens: int | None = None,
+    profile_flops: bool = False,
 ) -> dict[str, Any]:
     """Train one cartridge budget against a fixed supervision dataset.
 
@@ -389,6 +390,23 @@ def train_cartridge(
     best_step = start_step
     best_state_dict = deepcopy(cartridge.state_dict())
     validation_history: list[dict[str, float | int]] = []
+
+    # Optional: profile FLOPs on the first training step and extrapolate.
+    flops_per_step: float | None = None
+    if profile_flops and steps > start_step:
+        import torch.profiler as _prof
+        _profile_example = examples[start_step % len(examples)]
+        with _prof.profile(activities=[_prof.ProfilerActivity.CUDA], with_flops=True) as _p:
+            _profile_loss = _compute_example_loss(
+                model=model, tokenizer=tokenizer, cartridge=cartridge,
+                example=_profile_example, device=device,
+            )
+            (_profile_loss / gradient_accumulation_steps).backward()
+            optimizer.zero_grad(set_to_none=True)
+        flops_per_step = sum(e.flops for e in _p.key_averages() if e.flops > 0)
+
+    import time as _time
+    _train_loop_started = _time.perf_counter()
     for step_idx in range(start_step, steps):
         example = examples[step_idx % len(examples)]
         loss = _compute_example_loss(
@@ -441,6 +459,7 @@ def train_cartridge(
                         for key, value in cartridge.state_dict().items()
                     }
 
+    _train_loop_elapsed = _time.perf_counter() - _train_loop_started
     final_cartridge_path = output_dir / f"{slice_id}_final_cartridge.pt"
     cartridge_path = output_dir / f"{slice_id}_cartridge.pt"
     checkpoint_path = output_dir / f"{slice_id}_checkpoint.pt"
@@ -491,6 +510,10 @@ def train_cartridge(
         "loss_history": loss_history,
         "validation_history": validation_history,
         "loss_decreased": loss_history[-1] < loss_history[0],
+        "flops_per_step": flops_per_step,
+        "total_estimated_flops": flops_per_step * steps if flops_per_step else None,
+        "train_loop_seconds": _train_loop_elapsed,
+        "train_tops": (flops_per_step * steps / max(_train_loop_elapsed, 1e-6) / 1e12) if flops_per_step else None,
         "manifest_hash": stable_hash(
             {
                 "slice_id": slice_id,

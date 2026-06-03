@@ -13,6 +13,7 @@ from datetime import datetime
 from pathlib import Path
 
 import httpx
+import torch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -195,6 +196,36 @@ def _update_latest_pointer(run_dir: Path, *, output_root: Path, experiment_name:
     latest_path.symlink_to(Path("runs") / run_dir.name)
 
 
+def _cuda_reset() -> None:
+    if torch.cuda.is_available():
+        torch.cuda.reset_peak_memory_stats()
+
+
+def _cuda_snapshot() -> dict[str, float]:
+    """Return current CUDA memory stats in MB, or zeros if CUDA unavailable."""
+    if not torch.cuda.is_available():
+        return {"allocated_mb": 0.0, "peak_mb": 0.0, "reserved_mb": 0.0}
+    return {
+        "allocated_mb": torch.cuda.memory_allocated() / 1e6,
+        "peak_mb":      torch.cuda.max_memory_allocated() / 1e6,
+        "reserved_mb":  torch.cuda.memory_reserved() / 1e6,
+    }
+
+
+def _record_memory(
+    phase_timings: dict,
+    key: str,
+    snap_before: dict[str, float],
+    snap_after: dict[str, float],
+) -> None:
+    """Store peak and delta memory for a phase and print a [memory] line."""
+    peak_mb  = snap_after["peak_mb"]
+    delta_mb = snap_after["allocated_mb"] - snap_before["allocated_mb"]
+    phase_timings[f"{key}_peak_memory_mb"]  = peak_mb
+    phase_timings[f"{key}_memory_delta_mb"] = delta_mb
+    print(f"[memory] {key}: peak={peak_mb:.0f}MB  delta={delta_mb:+.0f}MB  reserved={snap_after['reserved_mb']:.0f}MB")
+
+
 def main() -> int:
     """Execute the full benchmark pipeline for one experiment directory."""
     parser = argparse.ArgumentParser(
@@ -232,6 +263,8 @@ def main() -> int:
                         help="After training, prune the cartridge to --kvzip-prune-tokens slots using KVzip+ importance scores.")
     parser.add_argument("--kvzip-prune-tokens", type=int, default=None,
                         help="Target slot count after KVzip+ pruning (default: half of --cartridge-tokens).")
+    parser.add_argument("--profile-flops", action="store_true",
+                        help="Profile FLOPs during cartridge training and report TOPs.")
     args = parser.parse_args()
 
     inputs = load_experiment_inputs(args.experiment_name, data_root=args.data_root)
@@ -347,6 +380,8 @@ def main() -> int:
     # Convert teacher answers into token-level supervision after vLLM is gone so the local
     # HF teacher can reuse the GPU safely on single-card machines.
     _build_dataset_seconds = 0.0
+    _build_dataset_snap_before = _cuda_snapshot()
+    _cuda_reset()
     for slice_record in slices:
         slice_id = str(slice_record["chunk_id"])
         training_dataset_path = bootstrap_dir / slice_id / "train_dataset.jsonl"
@@ -364,9 +399,12 @@ def main() -> int:
         print(f"[timing] build_training_dataset slice={slice_id}: {_dt:.1f}s")
         training_dataset_paths[slice_id] = str(training_dataset_path.resolve())
     phase_timings["build_training_dataset_seconds"] = _build_dataset_seconds
+    _record_memory(phase_timings, "build_training_dataset", _build_dataset_snap_before, _cuda_snapshot())
     print(f"[timing] build_training_dataset total: {_build_dataset_seconds:.1f}s")
     preparation_seconds = time.perf_counter() - prepare_started
 
+    _cuda_reset()
+    _baseline_snap_before = _cuda_snapshot()
     _t0 = time.perf_counter()
     baseline_records = run_local_hf_matched_eval(
         eval_path=eval_rows_path,
@@ -375,6 +413,7 @@ def main() -> int:
         max_completion_tokens=args.max_completion_tokens,
     )
     phase_timings["baseline_eval_seconds"] = time.perf_counter() - _t0
+    _record_memory(phase_timings, "baseline_eval", _baseline_snap_before, _cuda_snapshot())
     print(f"[timing] run_local_hf_matched_eval: {phase_timings['baseline_eval_seconds']:.1f}s")
 
     budget_summaries: list[dict[str, object]] = []
@@ -384,6 +423,8 @@ def main() -> int:
         slice_train_summaries: dict[str, dict[str, object]] = {}
         cartridge_paths: dict[str, str] = {}
         train_seconds = 0.0
+        _cuda_reset()
+        _train_snap_before = _cuda_snapshot()
         for slice_record in slices:
             slice_id = str(slice_record["chunk_id"])
             train_started = time.perf_counter()
@@ -405,17 +446,23 @@ def main() -> int:
                 kvzip_chunk_size=args.kvzip_chunk_size,
                 kvzip_prune=args.kvzip_prune,
                 kvzip_prune_tokens=args.kvzip_prune_tokens,
+                profile_flops=args.profile_flops,
             )
             _dt = time.perf_counter() - train_started
             train_seconds += _dt
-            print(f"[timing] train_cartridge {budget_label} slice={slice_id}: {_dt:.1f}s")
+            _tops = train_summary.get("train_tops")
+            _flops_msg = f"  TOPs={_tops:.2f}" if _tops else ""
+            print(f"[timing] train_cartridge {budget_label} slice={slice_id}: {_dt:.1f}s{_flops_msg}")
             slice_train_summaries[slice_id] = train_summary
             cartridge_paths[slice_id] = str(train_summary["cartridge_path"])
         phase_timings[f"train_cartridge_seconds_{budget_label}"] = train_seconds
+        _record_memory(phase_timings, f"train_cartridge_{budget_label}", _train_snap_before, _cuda_snapshot())
         print(f"[timing] train_cartridge {budget_label} total: {train_seconds:.1f}s")
         cartridge_predictions_path = budget_dir / "predictions.jsonl"
         # Cartridge inference uses the same HF backend as the matched baseline, with top-1
         # chunk routing selecting which slice-specific cache to inject for each question.
+        _cuda_reset()
+        _eval_snap_before = _cuda_snapshot()
         _t0 = time.perf_counter()
         run_cartridge_eval(
             eval_path=eval_rows_path,
@@ -426,6 +473,7 @@ def main() -> int:
             max_completion_tokens=args.max_completion_tokens,
         )
         phase_timings[f"cartridge_eval_seconds_{budget_label}"] = time.perf_counter() - _t0
+        _record_memory(phase_timings, f"cartridge_eval_{budget_label}", _eval_snap_before, _cuda_snapshot())
         print(f"[timing] run_cartridge_eval {budget_label}: {phase_timings[f'cartridge_eval_seconds_{budget_label}']:.1f}s")
         summary = write_budget_report(
             experiment_name=args.experiment_name,
