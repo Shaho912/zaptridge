@@ -246,7 +246,7 @@ def _profile_phase(fn, *, key: str, phase_timings: dict, enabled: bool):
         return fn()
     import torch.profiler as _tp
     with _tp.profile(
-        activities=[_tp.ProfilerActivity.CUDA],
+        activities=[_tp.ProfilerActivity.CPU, _tp.ProfilerActivity.CUDA],
         with_flops=True,
         profile_memory=True,
     ) as _prof:
