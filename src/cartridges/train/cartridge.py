@@ -410,7 +410,7 @@ def train_cartridge(
             optimizer.zero_grad(set_to_none=True)
         avgs = _p.key_averages()
         flops_per_step     = sum(e.flops for e in avgs if e.flops > 0)
-        mem_bytes_per_step = sum(abs(e.self_cuda_memory_usage) for e in avgs)
+        mem_bytes_per_step = sum(abs(e.cuda_memory_usage) for e in avgs)
 
     import time as _time
     _train_loop_started = _time.perf_counter()
