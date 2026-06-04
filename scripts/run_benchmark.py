@@ -257,7 +257,10 @@ def _profile_phase(fn, *, key: str, phase_timings: dict, enabled: bool):
         abs(getattr(e, "cuda_memory_usage", None) or getattr(e, "self_cuda_memory_usage", None) or 0)
         for e in avgs
     )
-    cuda_us   = sum(e.self_cuda_time_total for e in avgs)
+    cuda_us   = sum(
+        getattr(e, "self_cuda_time_total", None) or getattr(e, "cuda_time_total", None) or 0
+        for e in avgs
+    )
     eff_tflops = flops / max(cuda_us * 1e-6, 1e-9) / 1e12
     eff_bw_gbs = mem_bytes / max(cuda_us * 1e-6, 1e-9) / 1e9
     ai         = flops / mem_bytes if mem_bytes > 0 else 0.0
