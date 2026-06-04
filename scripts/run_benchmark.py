@@ -253,7 +253,7 @@ def _profile_phase(fn, *, key: str, phase_timings: dict, enabled: bool):
         result = fn()
     avgs      = _prof.key_averages()
     flops     = sum(e.flops for e in avgs if e.flops > 0)
-    mem_bytes = sum(abs(e.self_cuda_memory_usage) for e in avgs)
+    mem_bytes = sum(abs(e.cuda_memory_usage) for e in avgs)
     cuda_us   = sum(e.self_cuda_time_total for e in avgs)
     eff_tflops = flops / max(cuda_us * 1e-6, 1e-9) / 1e12
     eff_bw_gbs = mem_bytes / max(cuda_us * 1e-6, 1e-9) / 1e9
