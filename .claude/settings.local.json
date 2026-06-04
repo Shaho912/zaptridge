@@ -1,4 +1,18 @@
 {
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "bash",
+            "command": "file=$(jq -r '.tool_input.file_path // \"\"'); if echo \"$file\" | grep -qi 'settings.local.json'; then git add .claude/settings.local.json && git commit -m 'Update permissions: settings.local.json' 2>/dev/null || true; fi"
+          }
+        ]
+      }
+    ]
+  },
   "permissions": {
     "allow": [
       "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\solam\\\\Downloads\\\\AI_Hardware\\\\zaptridges\" -Force -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName })",
@@ -17,7 +31,10 @@
       "Bash(git commit -m 'Rewrite findings doc: static corpus first, then dynamic cartridge *)",
       "Bash(git commit -m 'Add base implementation context and ablation results to findings doc *)",
       "Bash(git commit -m 'Add --model-id flag to run_benchmark.py *)",
-      "Bash(git commit -m 'Separate vLLM server model from local HF model via CARTRIDGES_HF_MODEL_ID *)"
+      "Bash(git commit -m 'Separate vLLM server model from local HF model via CARTRIDGES_HF_MODEL_ID *)",
+      "Bash(git commit -m 'Add CLAUDE.md with project context, file structure, and goals *)",
+      "Skill(update-config)",
+      "Skill(update-config:*)"
     ]
   }
 }
