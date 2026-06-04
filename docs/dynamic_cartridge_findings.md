@@ -91,6 +91,133 @@ Varying only `--bootstrap-count`.
 
 ---
 
+## Memory Profiling and Mobile Feasibility (Qwen3-0.6B)
+
+**Setup:** wikipedia_india corpus, 120 bootstrap questions, 1024-token cartridge. Memory measured
+via `torch.cuda.max_memory_allocated()`, which tracks PyTorch-managed allocations in the local HF
+process only. The vLLM server uses a separate memory allocator, so its footprint does not appear
+in these numbers.
+
+### Phase Memory Comparison
+
+| Phase | 4B peak | 0.6B peak | Reduction |
+|---|---|---|---|
+| build_training_dataset | 14.4 GB | 7.3 GB | −49% |
+| baseline_eval | 13.1 GB | 5.6 GB | −57% |
+| train_cartridge | 9.8 GB | **2.2 GB** | −77% |
+| cartridge_eval | 8.7 GB | **1.7 GB** | −81% |
+
+### Step Count Does Not Transfer from 4B
+
+The 60-step optimization found for 4B does not apply to 0.6B:
+
+| Steps | Exact match | Semantic match | Build time |
+|---|---|---|---|
+| 240 | **0.40** | **0.60** | 89s |
+| 60 | 0.25 | 0.40 | 75s |
+
+**0.6B requires 240 steps minimum.** At 60 steps, cartridge quality falls back to baseline ICL
+(0.25 exact). The smaller model needs more gradient steps to compress effectively — likely because
+it has less representational capacity and the distillation signal takes longer to propagate into
+the KV tensors.
+
+### Quality Results (0.6B, 240 steps)
+
+| | Baseline ICL | Cartridge (8× compressed) |
+|---|---|---|
+| Exact match | 0.25 | **0.40** |
+| Semantic match | 0.50 | **0.60** |
+
+The cartridge outperforms in-context learning despite 8× compression. This is unusual — for 4B,
+full context is the ceiling. For 0.6B, the model performs worse with raw long context than with
+the compressed KV representation. Small models are weaker at retrieving from long contexts; the
+cartridge's direct attention pattern may be more effective than attending over raw text tokens.
+
+### Mobile Feasibility (0.6B only)
+
+| Phase | 0.6B peak | iPhone 16 Pro (8 GB) | iPhone 16 Pro Max (16 GB) |
+|---|---|---|---|
+| Cartridge inference (cartridge_eval) | **1.7 GB** | ✓ fits | ✓ fits |
+| Cartridge training (train_cartridge) | **2.2 GB** | ✓ fits | ✓ fits |
+| Full build pipeline (peak at build_training_dataset) | **7.3 GB** | Tight | ✓ fits |
+
+The on-device inference path needs only 1.7 GB — viable on any modern iPhone. The overnight
+build pipeline peaks at 7.3 GB during forward passes over the training dataset; this fits
+on iPhone 16 Pro Max with margin, and is tight but potentially viable on iPhone 16 Pro (8 GB)
+depending on OS overhead.
+
+---
+
+## Model Size Tradeoff: 0.6B vs 1.7B vs 4B
+
+The three models profiled give a complete quality/memory tradeoff curve. All runs:
+wikipedia_india corpus, 120 bootstrap questions, 1024-token cartridge, 240 train steps.
+
+### Memory
+
+| Phase | 0.6B | 1.7B | 4B |
+|---|---|---|---|
+| cartridge_eval (inference) | 1.7 GB | **3.9 GB** | 8.7 GB |
+| train_cartridge | 2.2 GB | 4.5 GB | 9.8 GB |
+| baseline_eval | 5.6 GB | 7.9 GB | 13.1 GB |
+| build_training_dataset (peak) | 7.3 GB | 9.5 GB | 14.4 GB |
+
+### Quality
+
+| | Baseline exact | Cartridge exact | Baseline semantic | Cartridge semantic |
+|---|---|---|---|---|
+| 0.6B | 0.25 | 0.40 | 0.50 | 0.60 |
+| 1.7B | 0.70 | 0.65 | 0.85 | **0.90** |
+| 4B | ~0.90 | ~0.75 | ~1.00 | ~0.95 |
+
+### Build Time (240 steps)
+
+| Model | Build time |
+|---|---|
+| 0.6B | 89s |
+| 1.7B | 115s |
+| 4B (60 steps, optimal) | 72s |
+
+### Findings
+
+**1.7B is the sweet spot for mobile.** Cartridge inference costs 3.9 GB — fits on iPhone 16 Pro
+(8 GB) with ~4 GB headroom for OS and app. Quality is close to 4B (+0.10 exact gap, +0.05
+semantic gap) and dramatically better than 0.6B (+0.25 exact, +0.30 semantic).
+
+**The quality gap from 4B narrows more than the memory gap.** Going 4B → 1.7B cuts inference
+memory by 55% but loses only ~0.10 exact match. Going 1.7B → 0.6B cuts another 56% memory
+but loses another 0.25 exact match — a much worse trade.
+
+**Build pipeline fits iPhone 16 Pro Max only.** The 9.5 GB peak during build_training_dataset
+fits 16 GB (Pro Max) with margin; 8 GB (Pro) cannot accommodate it. On-device overnight
+training is a Pro Max feature.
+
+**At 1.7B, cartridge semantic (0.90) exceeds baseline semantic (0.85)** despite 8× compression.
+See explanation below.
+
+### Why Cartridge Beats Baseline on Semantic Match at 1.7B
+
+At 1.7B, the raw-context baseline reads 8192 tokens and achieves 0.85 semantic match; the
+cartridge, despite compressing that context 8×, achieves 0.90. Three factors explain this:
+
+1. **The cartridge was distilled on Q&A pairs, not raw text.** Training optimized the KV tensors
+   specifically to reproduce the teacher's answers to the 120 bootstrap questions. The cartridge
+   encodes *answerable signal* more densely than the surrounding prose. When the model attends
+   to the cartridge, it gets a higher signal-to-noise ratio than reading the full document.
+
+2. **1.7B struggles with long-context retrieval.** A 1.7B model reading 8192 tokens can be
+   distracted by irrelevant passages, hedge with extra qualifiers, or blend information from
+   nearby sentences. These artifacts do not change the meaning enough to fail exact match but
+   they confuse the semantic judge. The cartridge's compressed representation sidesteps this by
+   making the relevant information more directly accessible.
+
+3. **The 0.6B model does not have this property.** At 0.6B, the cartridge also beats baseline
+   on semantic (0.60 vs 0.50), and for the same reason — but the absolute numbers are low
+   because the model is genuinely capacity-limited. At 4B, the baseline is strong enough
+   that cartridge compression is a net cost on both metrics.
+
+---
+
 ## Part 1: Static Corpus Cartridge
 
 ### What It Is
