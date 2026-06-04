@@ -531,17 +531,13 @@ def main() -> int:
         print(f"[timing] train_cartridge {budget_label} total: {train_seconds:.1f}s")
         if args.profile_flops and slice_train_summaries:
             _last = next(iter(slice_train_summaries.values()))
-            _fp   = _last.get("flops_per_step") or 0.0
-            _mb   = _last.get("mem_bytes_per_step") or 0.0
+            _fp     = _last.get("flops_per_step") or 0.0
             _nsteps = _last.get("steps", 0)
             _loop_s = _last.get("train_loop_seconds") or 1e-9
             _key = f"train_cartridge_{budget_label}"
             phase_timings.update({
-                f"{_key}_flops":                   _fp * _nsteps,
-                f"{_key}_mem_bytes":               _mb * _nsteps,
-                f"{_key}_effective_tflops":        _last.get("train_tops") or 0.0,
-                f"{_key}_effective_bandwidth_gbs": (_mb * _nsteps / _loop_s) / 1e9 if _mb else 0.0,
-                f"{_key}_arithmetic_intensity":    _fp / _mb if _mb > 0 else 0.0,
+                f"{_key}_flops":         _fp * _nsteps,
+                f"{_key}_tflops_approx": _last.get("train_tops") or 0.0,
             })
         cartridge_predictions_path = budget_dir / "predictions.jsonl"
         # Cartridge inference uses the same HF backend as the matched baseline, with top-1
