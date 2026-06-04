@@ -218,6 +218,44 @@ cartridge, despite compressing that context 8×, achieves 0.90. Three factors ex
 
 ---
 
+## Roofline Analysis (Qwen3-1.7B, B200 MIG45)
+
+**Setup:** FLOPs captured via `torch.profiler` with `with_flops=True` (CPU+CUDA activities).
+TFLOPS computed using FLOPs from the profiled run combined with wall-clock timing from a clean
+un-profiled run (CPU profiling adds 2–4× overhead to inference phases, inflating profiler wall
+times). B200 reference: ~1800 TFLOPS BF16 peak compute, ~8 TB/s HBM3e bandwidth.
+
+### FLOPs and Utilization Per Phase
+
+| Phase | FLOPs | Real time | TFLOPS | % of B200 peak |
+|---|---|---|---|---|
+| build_training_dataset | 3.42 PFLOPs | 44.6s | 76.7 | 4.3% |
+| baseline_eval (full context) | 0.57 PFLOPs | 10.0s | 56.9 | 3.2% |
+| train_cartridge (240 steps) | 77.5 TFLOPs | 29.6s | 2.62 | 0.15% |
+| cartridge_eval (cartridge) | 2.66 TFLOPs | 7.0s | 0.38 | 0.02% |
+
+### Key Findings
+
+**All phases are heavily memory-bound.** Peak utilization is 4.3% of B200 compute. At <5% of
+peak TFLOPS, none of the phases are compute-constrained — they are all waiting on memory reads.
+This is expected for transformer inference at batch size 1: the bottleneck is reading model
+weights from HBM, not arithmetic throughput.
+
+**Cartridge eval uses 214× fewer FLOPs than full-context baseline eval** for the same 20
+questions. The 8× token compression yields more than 8× FLOPs reduction because attention
+scales quadratically with context length — a 1024-token cartridge avoids the O(seq²) attention
+cost of the full 8192-token context.
+
+**Implication for on-device deployment.** Since all phases are memory-bound, the binding
+constraint for the target SoC is memory bandwidth — not SRAM compute capacity:
+- RRAM read bandwidth (loading cartridge KV tensors at inference) is the primary latency
+  bottleneck for `cartridge_eval`
+- SRAM compute is not the bottleneck; the SoC can be sized for bandwidth, not peak FLOPs
+- `train_cartridge` at 2.62 TFLOPS runs well below even modest mobile GPU peaks — overnight
+  training is not compute-limited
+
+---
+
 ## Part 1: Static Corpus Cartridge
 
 ### What It Is
