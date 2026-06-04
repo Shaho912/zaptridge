@@ -236,44 +236,33 @@ def _record_memory(
 
 
 def _profile_phase(fn, *, key: str, phase_timings: dict, enabled: bool):
-    """Run fn() under torch.profiler when enabled; record FLOPs/bandwidth/roofline stats.
+    """Run fn() under torch.profiler when enabled; record estimated FLOPs.
 
-    Memory bytes are summed from self_cuda_memory_usage across all profiled kernels.
-    This approximates output-tensor allocations per kernel — a lower bound on true DRAM
-    traffic, but useful for relative comparison and arithmetic intensity estimation.
+    CPU activity recording is required for with_flops=True but adds significant
+    overhead to short phases (~10x for inference-heavy phases). TFLOPS is computed
+    using wall-clock time measured inside this function and is therefore an
+    underestimate for profiled phases. The FLOPs count itself is unaffected by
+    overhead and is the reliable output.
     """
     if not (enabled and torch.cuda.is_available()):
         return fn()
+    import time as _time
     import torch.profiler as _tp
+    _t0 = _time.perf_counter()
     with _tp.profile(
         activities=[_tp.ProfilerActivity.CPU, _tp.ProfilerActivity.CUDA],
         with_flops=True,
-        profile_memory=True,
     ) as _prof:
         result = fn()
-    avgs      = _prof.key_averages()
-    flops     = sum(e.flops for e in avgs if e.flops > 0)
-    mem_bytes = sum(
-        abs(getattr(e, "cuda_memory_usage", None) or getattr(e, "self_cuda_memory_usage", None) or 0)
-        for e in avgs
-    )
-    cuda_us   = sum(
-        getattr(e, "self_cuda_time_total", None) or getattr(e, "cuda_time_total", None) or 0
-        for e in avgs
-    )
-    eff_tflops = flops / max(cuda_us * 1e-6, 1e-9) / 1e12
-    eff_bw_gbs = mem_bytes / max(cuda_us * 1e-6, 1e-9) / 1e9
-    ai         = flops / mem_bytes if mem_bytes > 0 else 0.0
+    wall_secs = _time.perf_counter() - _t0
+    flops = sum(e.flops for e in _prof.key_averages() if e.flops > 0)
+    tflops = flops / max(wall_secs, 1e-9) / 1e12
     phase_timings.update({
-        f"{key}_flops":                   flops,
-        f"{key}_mem_bytes":               mem_bytes,
-        f"{key}_cuda_time_us":            cuda_us,
-        f"{key}_effective_tflops":        eff_tflops,
-        f"{key}_effective_bandwidth_gbs": eff_bw_gbs,
-        f"{key}_arithmetic_intensity":    ai,
+        f"{key}_flops":          flops,
+        f"{key}_wall_secs":      wall_secs,
+        f"{key}_tflops_approx":  tflops,
     })
-    mem_str = f"mem≈{mem_bytes/1e9:.2f}GB  AI={ai:.1f}  BW≈{eff_bw_gbs:.0f}GB/s" if mem_bytes > 0 else "mem=N/A"
-    print(f"[profile] {key}:  flops={flops/1e12:.3f}T  {mem_str}  TFLOPS={eff_tflops:.2f}")
+    print(f"[profile] {key}:  flops={flops/1e12:.3f}T  wall={wall_secs:.1f}s  TFLOPS≈{tflops:.2f}")
     return result
 
 
