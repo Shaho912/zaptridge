@@ -391,19 +391,26 @@ def train_cartridge(
     best_state_dict = deepcopy(cartridge.state_dict())
     validation_history: list[dict[str, float | int]] = []
 
-    # Optional: profile FLOPs on the first training step and extrapolate.
+    # Optional: profile one training step and extrapolate FLOPs + memory bytes.
     flops_per_step: float | None = None
+    mem_bytes_per_step: float | None = None
     if profile_flops and steps > start_step:
         import torch.profiler as _prof
         _profile_example = examples[start_step % len(examples)]
-        with _prof.profile(activities=[_prof.ProfilerActivity.CUDA], with_flops=True) as _p:
+        with _prof.profile(
+            activities=[_prof.ProfilerActivity.CUDA],
+            with_flops=True,
+            profile_memory=True,
+        ) as _p:
             _profile_loss = _compute_example_loss(
                 model=model, tokenizer=tokenizer, cartridge=cartridge,
                 example=_profile_example, device=device,
             )
             (_profile_loss / gradient_accumulation_steps).backward()
             optimizer.zero_grad(set_to_none=True)
-        flops_per_step = sum(e.flops for e in _p.key_averages() if e.flops > 0)
+        avgs = _p.key_averages()
+        flops_per_step     = sum(e.flops for e in avgs if e.flops > 0)
+        mem_bytes_per_step = sum(abs(e.self_cuda_memory_usage) for e in avgs)
 
     import time as _time
     _train_loop_started = _time.perf_counter()
@@ -511,6 +518,7 @@ def train_cartridge(
         "validation_history": validation_history,
         "loss_decreased": loss_history[-1] < loss_history[0],
         "flops_per_step": flops_per_step,
+        "mem_bytes_per_step": mem_bytes_per_step,
         "total_estimated_flops": flops_per_step * steps if flops_per_step else None,
         "train_loop_seconds": _train_loop_elapsed,
         "train_tops": (flops_per_step * steps / max(_train_loop_elapsed, 1e-6) / 1e12) if flops_per_step else None,

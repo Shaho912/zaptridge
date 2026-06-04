@@ -235,6 +235,45 @@ def _record_memory(
     print(f"[memory] {key}: peak={peak_mb:.0f}MB  delta={delta_mb:+.0f}MB  reserved={snap_after['reserved_mb']:.0f}MB")
 
 
+def _profile_phase(fn, *, key: str, phase_timings: dict, enabled: bool):
+    """Run fn() under torch.profiler when enabled; record FLOPs/bandwidth/roofline stats.
+
+    Memory bytes are summed from self_cuda_memory_usage across all profiled kernels.
+    This approximates output-tensor allocations per kernel — a lower bound on true DRAM
+    traffic, but useful for relative comparison and arithmetic intensity estimation.
+    """
+    if not (enabled and torch.cuda.is_available()):
+        return fn()
+    import torch.profiler as _tp
+    with _tp.profile(
+        activities=[_tp.ProfilerActivity.CUDA],
+        with_flops=True,
+        profile_memory=True,
+    ) as _prof:
+        result = fn()
+    avgs      = _prof.key_averages()
+    flops     = sum(e.flops for e in avgs if e.flops > 0)
+    mem_bytes = sum(abs(e.self_cuda_memory_usage) for e in avgs)
+    cuda_us   = sum(e.self_cuda_time_total for e in avgs)
+    eff_tflops = flops / max(cuda_us * 1e-6, 1e-9) / 1e12
+    eff_bw_gbs = mem_bytes / max(cuda_us * 1e-6, 1e-9) / 1e9
+    ai         = flops / mem_bytes if mem_bytes > 0 else 0.0
+    phase_timings.update({
+        f"{key}_flops":                   flops,
+        f"{key}_mem_bytes":               mem_bytes,
+        f"{key}_cuda_time_us":            cuda_us,
+        f"{key}_effective_tflops":        eff_tflops,
+        f"{key}_effective_bandwidth_gbs": eff_bw_gbs,
+        f"{key}_arithmetic_intensity":    ai,
+    })
+    print(
+        f"[profile] {key}:  flops={flops/1e12:.3f}T  "
+        f"mem≈{mem_bytes/1e9:.2f}GB  AI={ai:.1f}  "
+        f"TFLOPS={eff_tflops:.2f}  BW≈{eff_bw_gbs:.0f}GB/s"
+    )
+    return result
+
+
 def main() -> int:
     """Execute the full benchmark pipeline for one experiment directory."""
     parser = argparse.ArgumentParser(
@@ -394,22 +433,32 @@ def main() -> int:
     _build_dataset_seconds = 0.0
     _build_dataset_snap_before = _cuda_snapshot()
     _cuda_reset()
-    for slice_record in slices:
-        slice_id = str(slice_record["chunk_id"])
-        training_dataset_path = bootstrap_dir / slice_id / "train_dataset.jsonl"
-        _t0 = time.perf_counter()
-        build_training_dataset(
-            corpus_text=str(slice_record["text"]),
-            slice_id=slice_id,
-            answer_records=teacher_answers_by_slice[slice_id],
-            output_path=training_dataset_path,
-            device=args.device,
-            top_logprobs=5,
-        )
-        _dt = time.perf_counter() - _t0
-        _build_dataset_seconds += _dt
-        print(f"[timing] build_training_dataset slice={slice_id}: {_dt:.1f}s")
-        training_dataset_paths[slice_id] = str(training_dataset_path.resolve())
+
+    def _do_build_training_dataset():
+        nonlocal _build_dataset_seconds
+        for slice_record in slices:
+            slice_id = str(slice_record["chunk_id"])
+            training_dataset_path = bootstrap_dir / slice_id / "train_dataset.jsonl"
+            _t0 = time.perf_counter()
+            build_training_dataset(
+                corpus_text=str(slice_record["text"]),
+                slice_id=slice_id,
+                answer_records=teacher_answers_by_slice[slice_id],
+                output_path=training_dataset_path,
+                device=args.device,
+                top_logprobs=5,
+            )
+            _dt = time.perf_counter() - _t0
+            _build_dataset_seconds += _dt
+            print(f"[timing] build_training_dataset slice={slice_id}: {_dt:.1f}s")
+            training_dataset_paths[slice_id] = str(training_dataset_path.resolve())
+
+    _profile_phase(
+        _do_build_training_dataset,
+        key="build_training_dataset",
+        phase_timings=phase_timings,
+        enabled=args.profile_flops,
+    )
     phase_timings["build_training_dataset_seconds"] = _build_dataset_seconds
     _record_memory(phase_timings, "build_training_dataset", _build_dataset_snap_before, _cuda_snapshot())
     print(f"[timing] build_training_dataset total: {_build_dataset_seconds:.1f}s")
@@ -418,11 +467,16 @@ def main() -> int:
     _cuda_reset()
     _baseline_snap_before = _cuda_snapshot()
     _t0 = time.perf_counter()
-    baseline_records = run_local_hf_matched_eval(
-        eval_path=eval_rows_path,
-        output_path=baseline_predictions_path,
-        device=args.device,
-        max_completion_tokens=args.max_completion_tokens,
+    baseline_records = _profile_phase(
+        lambda: run_local_hf_matched_eval(
+            eval_path=eval_rows_path,
+            output_path=baseline_predictions_path,
+            device=args.device,
+            max_completion_tokens=args.max_completion_tokens,
+        ),
+        key="baseline_eval",
+        phase_timings=phase_timings,
+        enabled=args.profile_flops,
     )
     phase_timings["baseline_eval_seconds"] = time.perf_counter() - _t0
     _record_memory(phase_timings, "baseline_eval", _baseline_snap_before, _cuda_snapshot())
@@ -465,24 +519,56 @@ def main() -> int:
             _tops = train_summary.get("train_tops")
             _flops_msg = f"  TOPs={_tops:.2f}" if _tops else ""
             print(f"[timing] train_cartridge {budget_label} slice={slice_id}: {_dt:.1f}s{_flops_msg}")
+            if args.profile_flops:
+                _fp   = train_summary.get("flops_per_step") or 0.0
+                _mb   = train_summary.get("mem_bytes_per_step") or 0.0
+                _nsteps = train_summary.get("steps", 0)
+                _loop_s = train_summary.get("train_loop_seconds") or 1e-9
+                _ai   = _fp / _mb if _mb > 0 else 0.0
+                _bw   = (_mb * _nsteps / _loop_s) / 1e9 if _mb > 0 else 0.0
+                print(
+                    f"[profile] train_cartridge_{budget_label} slice={slice_id}:  "
+                    f"flops={_fp * _nsteps / 1e12:.3f}T  "
+                    f"mem≈{_mb * _nsteps / 1e9:.2f}GB  AI={_ai:.1f}  "
+                    f"TFLOPS={_tops or 0.0:.2f}  BW≈{_bw:.0f}GB/s"
+                )
             slice_train_summaries[slice_id] = train_summary
             cartridge_paths[slice_id] = str(train_summary["cartridge_path"])
         phase_timings[f"train_cartridge_seconds_{budget_label}"] = train_seconds
         _record_memory(phase_timings, f"train_cartridge_{budget_label}", _train_snap_before, _cuda_snapshot())
         print(f"[timing] train_cartridge {budget_label} total: {train_seconds:.1f}s")
+        if args.profile_flops and slice_train_summaries:
+            _last = next(iter(slice_train_summaries.values()))
+            _fp   = _last.get("flops_per_step") or 0.0
+            _mb   = _last.get("mem_bytes_per_step") or 0.0
+            _nsteps = _last.get("steps", 0)
+            _loop_s = _last.get("train_loop_seconds") or 1e-9
+            _key = f"train_cartridge_{budget_label}"
+            phase_timings.update({
+                f"{_key}_flops":                   _fp * _nsteps,
+                f"{_key}_mem_bytes":               _mb * _nsteps,
+                f"{_key}_effective_tflops":        _last.get("train_tops") or 0.0,
+                f"{_key}_effective_bandwidth_gbs": (_mb * _nsteps / _loop_s) / 1e9 if _mb else 0.0,
+                f"{_key}_arithmetic_intensity":    _fp / _mb if _mb > 0 else 0.0,
+            })
         cartridge_predictions_path = budget_dir / "predictions.jsonl"
         # Cartridge inference uses the same HF backend as the matched baseline, with top-1
         # chunk routing selecting which slice-specific cache to inject for each question.
         _cuda_reset()
         _eval_snap_before = _cuda_snapshot()
         _t0 = time.perf_counter()
-        run_cartridge_eval(
-            eval_path=eval_rows_path,
-            cartridge_paths=cartridge_paths,
-            retrieval_routes=retrieval_routes,
-            output_path=cartridge_predictions_path,
-            device=args.device,
-            max_completion_tokens=args.max_completion_tokens,
+        _profile_phase(
+            lambda: run_cartridge_eval(
+                eval_path=eval_rows_path,
+                cartridge_paths=cartridge_paths,
+                retrieval_routes=retrieval_routes,
+                output_path=cartridge_predictions_path,
+                device=args.device,
+                max_completion_tokens=args.max_completion_tokens,
+            ),
+            key=f"cartridge_eval_{budget_label}",
+            phase_timings=phase_timings,
+            enabled=args.profile_flops,
         )
         phase_timings[f"cartridge_eval_seconds_{budget_label}"] = time.perf_counter() - _t0
         _record_memory(phase_timings, f"cartridge_eval_{budget_label}", _eval_snap_before, _cuda_snapshot())
