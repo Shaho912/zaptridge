@@ -7,7 +7,7 @@
           {
             "type": "command",
             "shell": "bash",
-            "command": "file=$(jq -r '.tool_input.file_path // \"\"'); if echo \"$file\" | grep -qi 'settings.local.json'; then git add .claude/settings.local.json && git commit -m 'Update permissions: settings.local.json' 2>/dev/null || true; fi"
+            "command": "input=$(cat); file=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"'); tool=$(echo \"$input\" | jq -r '.tool_name // \"Edit\"'); if [ -n \"$file\" ]; then name=$(echo \"$file\" | awk -F'/' '{print $NF}'); toplevel=$(git rev-parse --show-toplevel 2>/dev/null); if [ -n \"$toplevel\" ]; then git -C \"$toplevel\" add -- \"$file\" 2>/dev/null && git -C \"$toplevel\" commit -m \"${tool}: ${name}\" 2>/dev/null || true; fi; fi"
           }
         ]
       }
