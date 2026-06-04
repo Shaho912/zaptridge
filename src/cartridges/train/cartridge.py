@@ -398,7 +398,7 @@ def train_cartridge(
         import torch.profiler as _prof
         _profile_example = examples[start_step % len(examples)]
         with _prof.profile(
-            activities=[_prof.ProfilerActivity.CUDA],
+            activities=[_prof.ProfilerActivity.CPU, _prof.ProfilerActivity.CUDA],
             with_flops=True,
             profile_memory=True,
         ) as _p:
