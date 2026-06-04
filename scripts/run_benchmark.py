@@ -269,11 +269,8 @@ def _profile_phase(fn, *, key: str, phase_timings: dict, enabled: bool):
         f"{key}_effective_bandwidth_gbs": eff_bw_gbs,
         f"{key}_arithmetic_intensity":    ai,
     })
-    print(
-        f"[profile] {key}:  flops={flops/1e12:.3f}T  "
-        f"mem≈{mem_bytes/1e9:.2f}GB  AI={ai:.1f}  "
-        f"TFLOPS={eff_tflops:.2f}  BW≈{eff_bw_gbs:.0f}GB/s"
-    )
+    mem_str = f"mem≈{mem_bytes/1e9:.2f}GB  AI={ai:.1f}  BW≈{eff_bw_gbs:.0f}GB/s" if mem_bytes > 0 else "mem=N/A"
+    print(f"[profile] {key}:  flops={flops/1e12:.3f}T  {mem_str}  TFLOPS={eff_tflops:.2f}")
     return result
 
 
