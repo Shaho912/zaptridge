@@ -67,5 +67,5 @@ Key notes for slides:
   • build FLOPs scale exactly 2x with bootstrap count (30→60→120 = 2→4→8 PFLOPs)
   • train FLOPs are fixed — depend only on step count, not data volume (51 TFLOPs always)
   • Bootstrap generation dominates build time at low counts; halving bootstrap halves both bootstrap + dataset build time
-  • 120→30 bootstrap saves ~91s total build time with modest quality trade-off
+  • 120->30 bootstrap saves ~91s total build time with modest quality trade-off
 """)
