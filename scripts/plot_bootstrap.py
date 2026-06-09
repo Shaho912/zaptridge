@@ -3,8 +3,11 @@ import numpy as np
 
 bootstrap = [30, 60, 120]
 
-build_flops   = [2.0, 4.0, 8.0]   # PFLOPs
-train_flops   = [51.1, 51.1, 51.1] # TFLOPs (constant)
+# All in TFLOPs (1 PFLOPs = 1000 TFLOPs)
+build_flops        = [2000, 4000, 8000]
+baseline_flops     = [1330, 1330, 1330]
+train_flops        = [51.1, 51.1, 51.1]
+cartridge_flops    = [6.4,  6.4,  7.9]
 build_memory  = [14.4, 14.5, 14.4] # GB (constant)
 train_memory  = [9.8, 10.1, 9.8]   # GB (constant)
 cartridge_memory = [8.7, 8.7, 8.7] # GB (constant)
