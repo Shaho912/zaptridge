@@ -18,13 +18,16 @@ train_time     = [16.1, 17.9, 17.4] # s
 fig, axes = plt.subplots(1, 3, figsize=(15, 5))
 fig.suptitle("Qwen3-4B — effect of bootstrap count (60 train steps)", fontsize=13)
 
-# --- FLOPs ---
+# --- FLOPs (log scale, all 4 phases) ---
 ax = axes[0]
-ax.plot(bootstrap, build_flops, marker="o", color="#4C72B0", label="build_training_dataset (PFLOPs)")
-ax.axhline(y=51.1/1e6, color="#DD8452", linestyle="--", label="train_cartridge (TFLOPs, ~0)")
+ax.plot(bootstrap, build_flops,     marker="o", color="#4C72B0", label="build_training_dataset")
+ax.plot(bootstrap, baseline_flops,  marker="s", color="#937860", label="baseline_eval")
+ax.plot(bootstrap, train_flops,     marker="^", color="#DD8452", label="train_cartridge")
+ax.plot(bootstrap, cartridge_flops, marker="D", color="#55A868", label="cartridge_eval")
+ax.set_yscale("log")
 ax.set_xlabel("Bootstrap questions")
-ax.set_ylabel("PFLOPs")
-ax.set_title("FLOPs")
+ax.set_ylabel("FLOPs (TFLOPs, log scale)")
+ax.set_title("FLOPs per phase")
 ax.set_xticks(bootstrap)
 ax.legend(fontsize=8)
 ax.grid(True, alpha=0.3)
