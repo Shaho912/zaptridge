@@ -3,10 +3,10 @@ import numpy as np
 
 phases = ["build\ntraining\ndataset", "baseline\neval", "train\ncartridge", "cartridge\neval"]
 
-memory_240 = [7.3, 5.6, 2.2, 1.7]
-memory_60  = [7.2, 5.6, 2.2, 1.7]
-time_240   = [27.9, 8.5, 29.6, 6.4]
-time_60    = [22.8, 8.6, 12.0, 6.3]
+memory_240 = [7.2, 5.6, 2.2, 1.7]
+memory_60  = [7.3, 5.6, 2.2, 1.7]
+time_240   = [12.3, 8.0, 22.6, 5.5]
+time_60    = [12.6, 8.1, 10.2, 5.0]
 
 x = np.arange(len(phases))
 width = 0.35
