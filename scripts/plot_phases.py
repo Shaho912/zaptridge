@@ -33,15 +33,15 @@ ax1.set_title("Peak GPU memory per phase")
 ax1.legend()
 ax1.grid(True, axis="y", alpha=0.3)
 
-# --- FLOPs (log scale, 4B and 1.7B only) ---
+# --- FLOPs (log scale) ---
 for i, (model, vals) in enumerate(flops.items()):
-    ax2.bar(x[:len(vals)] + (i - 0.5) * width, vals, width, label=model, color=colors[model])
+    ax2.bar(x + (i - 1) * width, vals, width, label=model, color=colors[model])
 
 ax2.set_yscale("log")
 ax2.set_xticks(x)
 ax2.set_xticklabels(phases)
 ax2.set_ylabel("FLOPs (TFLOPs, log scale)")
-ax2.set_title("FLOPs per phase (4B vs 1.7B)")
+ax2.set_title("FLOPs per phase")
 ax2.legend()
 ax2.grid(True, axis="y", alpha=0.3)
 
