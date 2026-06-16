@@ -11,6 +11,7 @@ Usage:
 """
 
 import argparse
+import re
 import sys
 from pathlib import Path
 
@@ -24,18 +25,17 @@ from cartridges.config import DEFAULT_HF_MODEL_ID  # noqa: E402
 from cartridges.core import TrainableKVCartridge    # noqa: E402
 
 DAY1_QUESTIONS = [
-    "What is the capital of India?",
-    "What is India's population?",
-    "What are the major religions in India?",
-    "Describe India's economy.",
-    "What languages are spoken in India?",
-    "When did India gain independence?",
+    "What is the capital of Zorbia?",
+    "What is the population of Zorbia?",
+    "What is the currency of Zorbia?",
+    "Who is the president of Zorbia?",
+    "What is Zorbia's national sport?",
 ]
 
 DAY2_QUESTIONS = [
-    "When did the French Revolution begin?",
-    "Who was Napoleon Bonaparte?",
-    "What was the significance of the French Revolution?",
+    "What is the capital of Blarvia?",
+    "What language do people speak in Blarvia?",
+    "What is Blarvia's main export?",
 ]
 
 
@@ -50,7 +50,6 @@ def generate(model, tokenizer, cartridge, question: str, device: str, max_new_to
     input_ids = tokenizer(prompt, return_tensors="pt", add_special_tokens=False)["input_ids"].to(device)
 
     with torch.inference_mode():
-        # First forward pass with cartridge as prefix cache
         outputs = model(
             input_ids=input_ids,
             past_key_values=cartridge.as_cache(model.config),
@@ -59,7 +58,6 @@ def generate(model, tokenizer, cartridge, question: str, device: str, max_new_to
         past_key_values = outputs.past_key_values
         next_token = torch.argmax(outputs.logits[:, -1, :], dim=-1, keepdim=True)
 
-        # Manual greedy decode loop
         generated_ids: list[int] = []
         eos_token_id = tokenizer.eos_token_id
         for _ in range(max_new_tokens):
@@ -75,7 +73,6 @@ def generate(model, tokenizer, cartridge, question: str, device: str, max_new_to
             past_key_values = outputs.past_key_values
             next_token = torch.argmax(outputs.logits[:, -1, :], dim=-1, keepdim=True)
 
-    import re
     text = tokenizer.decode(generated_ids, skip_special_tokens=True).strip()
     text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
     return text
@@ -103,7 +100,7 @@ def main() -> int:
     print(f"  {cartridge.num_tokens} slots, {cartridge.num_layers} layers\n")
 
     print("=" * 60)
-    print("DAY 1 QUESTIONS (testing memory retention)")
+    print("DAY 1 QUESTIONS (Zorbia — testing memory retention)")
     print("=" * 60)
     for q in DAY1_QUESTIONS:
         answer = generate(model, tokenizer, cartridge, q, args.device, args.max_new_tokens)
@@ -112,7 +109,7 @@ def main() -> int:
         print()
 
     print("=" * 60)
-    print("DAY 2 QUESTIONS (testing new knowledge)")
+    print("DAY 2 QUESTIONS (Blarvia — testing new knowledge)")
     print("=" * 60)
     for q in DAY2_QUESTIONS:
         answer = generate(model, tokenizer, cartridge, q, args.device, args.max_new_tokens)
