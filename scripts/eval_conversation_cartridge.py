@@ -49,18 +49,33 @@ def generate(model, tokenizer, cartridge, question: str, device: str, max_new_to
     input_ids = tokenizer(prompt, return_tensors="pt", add_special_tokens=False)["input_ids"].to(device)
 
     with torch.inference_mode():
-        output = model.generate(
+        # First forward pass with cartridge as prefix cache
+        outputs = model(
             input_ids=input_ids,
             past_key_values=cartridge.as_cache(model.config),
-            max_new_tokens=max_new_tokens,
-            do_sample=False,
-            eos_token_id=tokenizer.eos_token_id,
+            use_cache=True,
         )
+        past_key_values = outputs.past_key_values
+        next_token = torch.argmax(outputs.logits[:, -1, :], dim=-1, keepdim=True)
 
-    new_tokens = output[0][input_ids.shape[-1]:]
-    text = tokenizer.decode(new_tokens, skip_special_tokens=True).strip()
-    # Strip any residual think tags
+        # Manual greedy decode loop
+        generated_ids: list[int] = []
+        eos_token_id = tokenizer.eos_token_id
+        for _ in range(max_new_tokens):
+            token_id = int(next_token.item())
+            generated_ids.append(token_id)
+            if eos_token_id is not None and token_id == eos_token_id:
+                break
+            outputs = model(
+                input_ids=next_token,
+                past_key_values=past_key_values,
+                use_cache=True,
+            )
+            past_key_values = outputs.past_key_values
+            next_token = torch.argmax(outputs.logits[:, -1, :], dim=-1, keepdim=True)
+
     import re
+    text = tokenizer.decode(generated_ids, skip_special_tokens=True).strip()
     text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
     return text
 
