@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(pip install *)",
-      "Bash(python scripts/plot_phases.py)"
+      "Bash(python scripts/plot_phases.py)",
+      "Bash(python scripts/plot_bootstrap.py)",
+      "Bash(python scripts/plot_steps.py)"
     ]
   }
 }
