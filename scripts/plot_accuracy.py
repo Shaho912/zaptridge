@@ -1,10 +1,10 @@
 import matplotlib.pyplot as plt
 
-models = ["0.6B", "1.7B", "4B"]
-baseline_exact    = [0.25, 0.70, 0.90]
-baseline_semantic = [0.50, 0.85, 1.00]
-cartridge_exact   = [0.40, 0.70, 0.75]
-cartridge_semantic= [0.60, 0.80, 1.00]
+models = ["0.6B", "1.7B", "4B", "8B"]
+baseline_exact    = [0.25, 0.70, 0.90, 0.75]
+baseline_semantic = [0.50, 0.85, 1.00, 1.00]
+cartridge_exact   = [0.40, 0.70, 0.75, 0.85]
+cartridge_semantic= [0.60, 0.80, 1.00, 1.00]
 
 fig, ax = plt.subplots(figsize=(8, 5))
 
