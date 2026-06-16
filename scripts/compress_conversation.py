@@ -205,6 +205,8 @@ def main() -> int:
     parser.add_argument("--steps", type=int, default=60,
                         help="Distillation training steps (default: 60).")
     parser.add_argument("--learning-rate", type=float, default=3e-3)
+    parser.add_argument("--finetune-from", default=None,
+                        help="Path to an existing cartridge .pt to fine-tune instead of training from scratch.")
     parser.add_argument("--device", default="cuda:0")
     args = parser.parse_args()
 
