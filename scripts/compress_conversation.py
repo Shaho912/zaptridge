@@ -266,6 +266,7 @@ def main() -> int:
         learning_rate=args.learning_rate,
         steps=args.steps,
         num_frozen_tokens=1,
+        initial_cartridge_path=args.finetune_from,
     )
     train_seconds = time.perf_counter() - t0
 
