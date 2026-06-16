@@ -33,8 +33,9 @@ DAY1_QUESTIONS = [
 ]
 
 DAY2_QUESTIONS = [
-    "What is India's national animal?",
-    "What is the significance of the Ganges river?",
+    "When did the French Revolution begin?",
+    "Who was Napoleon Bonaparte?",
+    "What was the significance of the French Revolution?",
 ]
 
 
