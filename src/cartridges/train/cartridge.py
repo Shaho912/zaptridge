@@ -357,7 +357,13 @@ def train_cartridge(
         start_step = int(checkpoint["global_step"])
         loss_history = [float(value) for value in checkpoint["loss_history"]]
     else:
-        if kvzip_init:
+        if initial_cartridge_path is not None:
+            # Fine-tune an existing cartridge on new supervision data.
+            # All slots remain trainable — caller accepts the forgetting tradeoff.
+            cartridge = TrainableKVCartridge.load(initial_cartridge_path, device=device)
+            print(f"[train_cartridge] Fine-tuning from existing cartridge: {initial_cartridge_path} "
+                  f"({cartridge.num_tokens} slots)")
+        elif kvzip_init:
             # Score all tokens via KVzip+ context reconstruction and seed the cartridge
             # from the top-scoring positions rather than the first p tokens.
             scorer = KVzipScorer(model=model, tokenizer=tokenizer, chunk_size=kvzip_chunk_size)
