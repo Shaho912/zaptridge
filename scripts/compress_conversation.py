@@ -250,6 +250,15 @@ def main() -> int:
     supervision_seconds = time.perf_counter() - t0
     print(f"  Done in {supervision_seconds:.1f}s → {supervision_path}")
 
+    # Replay: append old supervision rows so the optimizer sees both old and new data.
+    if args.replay_from is not None:
+        replay_path = Path(args.replay_from)
+        replay_rows = [line for line in replay_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+        with supervision_path.open("a", encoding="utf-8") as fh:
+            for row in replay_rows:
+                fh.write(row + "\n")
+        print(f"  Replay: appended {len(replay_rows)} rows from {replay_path}")
+
     # Free model before train_cartridge loads its own copy (avoids double-load OOM).
     del model
     if torch.cuda.is_available():
