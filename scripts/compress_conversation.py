@@ -207,6 +207,8 @@ def main() -> int:
     parser.add_argument("--learning-rate", type=float, default=3e-3)
     parser.add_argument("--finetune-from", default=None,
                         help="Path to an existing cartridge .pt to fine-tune instead of training from scratch.")
+    parser.add_argument("--replay-from", default=None,
+                        help="Path to an existing supervision .jsonl to mix in during fine-tuning (replay/rehearsal).")
     parser.add_argument("--device", default="cuda:0")
     args = parser.parse_args()
 
