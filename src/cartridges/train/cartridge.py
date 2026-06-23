@@ -277,6 +277,7 @@ def train_cartridge(
     gradient_accumulation_steps: int = 1,
     resume_from: str | Path | None = None,
     initial_cartridge_path: str | Path | None = None,
+    initialization_text: str | None = None,
     max_grad_norm: float = 1.0,
     seed: int = 0,
     validation_examples: int = 16,
