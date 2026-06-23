@@ -379,10 +379,11 @@ def train_cartridge(
             )
         else:
             # Default: seed from the first ``cartridge_tokens`` positions of the system prompt.
+            # Pass initialization_text to override (e.g. a combined prompt for consolidation).
             cartridge = initialize_from_prefix_text(
                 model=model,
                 tokenizer=tokenizer,
-                text=examples[0].system_prompt,
+                text=initialization_text if initialization_text is not None else examples[0].system_prompt,
                 num_tokens=cartridge_tokens,
                 num_frozen_tokens=num_frozen_tokens,
             )
