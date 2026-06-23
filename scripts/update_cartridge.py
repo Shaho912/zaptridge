@@ -28,7 +28,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from cartridges.config import DEFAULT_MATRIX  # noqa: E402
+from cartridges.config import DEFAULT_HF_MODEL_ID  # noqa: E402
 from cartridges.core import (  # noqa: E402
     DeltaKVCartridge,
     TrainableKVCartridge,
