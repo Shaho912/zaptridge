@@ -52,18 +52,27 @@ def main() -> int:
 
     output_path = Path(args.output_path)
 
-    # Concatenate all supervision rows into one file.
+    # Concatenate all supervision rows into one file and collect unique system prompts.
     combined_path = output_path.with_suffix(".combined_supervision.jsonl")
     total_rows = 0
+    seen_prompts: list[str] = []
     combined_path.parent.mkdir(parents=True, exist_ok=True)
     with combined_path.open("w", encoding="utf-8") as out:
         for sup_path in args.supervision_paths:
             rows = [l for l in Path(sup_path).read_text(encoding="utf-8").splitlines() if l.strip()]
             for row in rows:
                 out.write(row + "\n")
+                parsed = json.loads(row)
+                prompt = parsed.get("system_prompt", "")
+                if prompt and prompt not in seen_prompts:
+                    seen_prompts.append(prompt)
             total_rows += len(rows)
             print(f"  Loaded {len(rows):>3} rows from {sup_path}")
-    print(f"  Combined: {total_rows} rows total → {combined_path}\n")
+    print(f"  Combined: {total_rows} rows total, {len(seen_prompts)} unique system prompts → {combined_path}\n")
+
+    # Build a combined initialization text from all unique system prompts so the cartridge
+    # starts with geometry that covers every conversation equally, not just the first file.
+    combined_init_text = "\n\n---\n\n".join(seen_prompts)
 
     # Train from scratch on the combined dataset.
     t0 = time.perf_counter()
@@ -79,6 +88,7 @@ def main() -> int:
         steps=args.steps,
         num_frozen_tokens=1,
         initial_cartridge_path=None,  # always fresh — no prior geometry to fight
+        initialization_text=combined_init_text,
     )
     elapsed = time.perf_counter() - t0
 
