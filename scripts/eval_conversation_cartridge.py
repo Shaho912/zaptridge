@@ -91,6 +91,10 @@ def generate(model, tokenizer, cartridge, question: str, device: str, max_new_to
 
     text = tokenizer.decode(generated_ids, skip_special_tokens=True).strip()
     text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
+    # Strip orphaned </think> tags (8B sometimes generates them without opening <think>)
+    text = re.sub(r"</think>", "", text).strip()
+    # Strip "Okay, let's see..." reasoning preamble that 8B emits even with /no_think
+    text = re.sub(r"^(Okay[,.].*?\n\n)", "", text, flags=re.DOTALL).strip()
     return text
 
 
