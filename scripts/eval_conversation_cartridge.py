@@ -102,7 +102,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--cartridge-path", required=True)
     parser.add_argument("--device", default="cuda:0")
-    parser.add_argument("--max-new-tokens", type=int, default=80)
+    parser.add_argument("--max-new-tokens", type=int, default=200)
     args = parser.parse_args()
 
     print(f"Loading model: {DEFAULT_HF_MODEL_ID}")
