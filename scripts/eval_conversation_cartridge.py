@@ -115,23 +115,22 @@ def main() -> int:
     cartridge = TrainableKVCartridge.load(args.cartridge_path, device=args.device)
     print(f"  {cartridge.num_tokens} slots, {cartridge.num_layers} layers\n")
 
-    print("=" * 60)
-    print("DAY 1 QUESTIONS (Zorbia — testing memory retention)")
-    print("=" * 60)
-    for q in DAY1_QUESTIONS:
-        answer = generate(model, tokenizer, cartridge, q, args.device, args.max_new_tokens)
-        print(f"Q: {q}")
-        print(f"A: {answer}")
-        print()
+    sections = [
+        ("DAY 1 QUESTIONS (Zorbia)", DAY1_QUESTIONS),
+        ("DAY 2 QUESTIONS (Blarvia)", DAY2_QUESTIONS),
+        ("DAY 3 QUESTIONS (Glorvia)", DAY3_QUESTIONS),
+        ("DAY 4 QUESTIONS (Threndia)", DAY4_QUESTIONS),
+    ]
 
-    print("=" * 60)
-    print("DAY 2 QUESTIONS (Blarvia — testing new knowledge)")
-    print("=" * 60)
-    for q in DAY2_QUESTIONS:
-        answer = generate(model, tokenizer, cartridge, q, args.device, args.max_new_tokens)
-        print(f"Q: {q}")
-        print(f"A: {answer}")
-        print()
+    for label, questions in sections:
+        print("=" * 60)
+        print(label)
+        print("=" * 60)
+        for q in questions:
+            answer = generate(model, tokenizer, cartridge, q, args.device, args.max_new_tokens)
+            print(f"Q: {q}")
+            print(f"A: {answer}")
+            print()
 
     return 0
 
