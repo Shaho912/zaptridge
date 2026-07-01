@@ -38,6 +38,22 @@ DAY2_QUESTIONS = [
     "What is Blarvia's main export?",
 ]
 
+DAY3_QUESTIONS = [
+    "What is the capital of Glorvia?",
+    "What is the population of Glorvia?",
+    "What is the currency of Glorvia?",
+    "Who leads Glorvia?",
+    "What is Glorvia's main export?",
+]
+
+DAY4_QUESTIONS = [
+    "What is the capital of Threndia?",
+    "What is the population of Threndia?",
+    "What is the currency of Threndia?",
+    "Who is the president of Threndia?",
+    "What is Threndia's main export?",
+]
+
 
 def generate(model, tokenizer, cartridge, question: str, device: str, max_new_tokens: int = 80) -> str:
     messages = [{"role": "user", "content": f"/no_think\n{question}"}]
