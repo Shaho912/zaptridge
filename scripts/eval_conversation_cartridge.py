@@ -127,16 +127,23 @@ def main() -> int:
         ("DAY 4 QUESTIONS (Threndia)", DAY4_QUESTIONS),
     ]
 
+    total_time = 0.0
+    total_questions = 0
     for label, questions in sections:
         print("=" * 60)
         print(label)
         print("=" * 60)
         for q in questions:
-            answer = generate(model, tokenizer, cartridge, q, args.device, args.max_new_tokens)
+            answer, elapsed = generate(model, tokenizer, cartridge, q, args.device, args.max_new_tokens)
             print(f"Q: {q}")
             print(f"A: {answer}")
+            print(f"   [{elapsed:.2f}s]")
             print()
+            total_time += elapsed
+            total_questions += 1
 
+    print(f"Total: {total_questions} questions in {total_time:.1f}s "
+          f"({total_time / total_questions:.2f}s/query avg)")
     return 0
 
 
