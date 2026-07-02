@@ -55,7 +55,7 @@ DAY4_QUESTIONS = [
 ]
 
 
-def generate(model, tokenizer, cartridge, question: str, device: str, max_new_tokens: int = 80) -> str:
+def generate(model, tokenizer, cartridge, question: str, device: str, max_new_tokens: int = 80) -> tuple[str, float]:
     messages = [{"role": "user", "content": f"/no_think\n{question}"}]
     prompt = tokenizer.apply_chat_template(
         messages,
