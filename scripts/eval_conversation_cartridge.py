@@ -66,6 +66,7 @@ def generate(model, tokenizer, cartridge, question: str, device: str, max_new_to
     )
     input_ids = tokenizer(prompt, return_tensors="pt", add_special_tokens=False)["input_ids"].to(device)
 
+    t0 = time.perf_counter()
     with torch.inference_mode():
         outputs = model(
             input_ids=input_ids,
@@ -89,14 +90,13 @@ def generate(model, tokenizer, cartridge, question: str, device: str, max_new_to
             )
             past_key_values = outputs.past_key_values
             next_token = torch.argmax(outputs.logits[:, -1, :], dim=-1, keepdim=True)
+    elapsed = time.perf_counter() - t0
 
     text = tokenizer.decode(generated_ids, skip_special_tokens=True).strip()
     text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
-    # Strip orphaned </think> tags (8B sometimes generates them without opening <think>)
     text = re.sub(r"</think>", "", text).strip()
-    # Strip "Okay, let's see..." reasoning preamble that 8B emits even with /no_think
     text = re.sub(r"^(Okay[,.].*?\n\n)", "", text, flags=re.DOTALL).strip()
-    return text
+    return text, elapsed
 
 
 def main() -> int:
