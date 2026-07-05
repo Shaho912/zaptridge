@@ -164,6 +164,7 @@ def _condense_answers(
             {
                 "role": "user",
                 "content": (
+                    "/no_think\n"
                     "Given this question and answer from a research paper, extract the "
                     "shortest exact key phrase (1 to 6 words) from the answer that "
                     "uniquely identifies the correct response. Output only the phrase, "
