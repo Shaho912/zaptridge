@@ -205,6 +205,13 @@ def main() -> int:
         "--pdf", action="store_true",
         help="Force PDF extraction instead of arxiv HTML (HTML is default for arxiv IDs).",
     )
+    parser.add_argument(
+        "--condense-answers", action="store_true",
+        help=(
+            "After bootstrap, ask vLLM to condense each expected answer to a short "
+            "key phrase (1-6 words). Produces more reliable substring matching in eval."
+        ),
+    )
     args = parser.parse_args()
 
     corpus_dir = ROOT / args.data_root / args.name
