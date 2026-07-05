@@ -176,7 +176,7 @@ def _condense_answers(
         ]
         try:
             result = client.chat(messages, max_completion_tokens=20, temperature=0.0)
-            phrase = result.content.strip().strip('"\'').strip()
+            phrase = result.text.strip().strip('"\'').strip()
             condensed.append({**ex, "expected_answer": phrase})
         except Exception:
             condensed.append(ex)
