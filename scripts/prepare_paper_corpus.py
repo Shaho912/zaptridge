@@ -265,6 +265,10 @@ def main() -> int:
     )
     print(f"Generated {len(eval_examples)} eval Q&A pairs")
 
+    if args.condense_answers:
+        print("Condensing expected answers to short key phrases via vLLM...")
+        eval_examples = _condense_answers(eval_examples, args.base_url, args.api_key)
+
     eval_spec = _bootstrap_to_eval_spec(args.name, eval_examples)
     eval_spec_path = corpus_dir / "eval_spec.json"
     eval_spec_path.write_text(json.dumps(eval_spec, indent=2), encoding="utf-8")
