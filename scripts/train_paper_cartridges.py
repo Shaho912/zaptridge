@@ -201,6 +201,8 @@ def main() -> int:
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--skip-bootstrap", action="store_true",
                         help="Skip vLLM bootstrap; assume supervision JSONLs already exist.")
+    parser.add_argument("--pdf", action="store_true",
+                        help="Force PDF extraction instead of arxiv HTML (HTML is default for arxiv IDs).")
     args = parser.parse_args()
 
     output_dir = Path(args.output_dir)
