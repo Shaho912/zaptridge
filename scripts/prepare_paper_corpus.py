@@ -1,0 +1,190 @@
+#!/usr/bin/env python3
+"""Prepare a research paper as a benchmark corpus for run_benchmark.py.
+
+Downloads a PDF from arxiv (or reads a local file), extracts plain text, and
+creates data/{name}/ with data.txt + eval_spec.json + metadata.json.
+
+The eval spec is auto-generated from a small vLLM bootstrap pass (--eval-count
+questions), separate from the larger bootstrap used for training. These questions
+are excluded from the training bootstrap so there is no data leakage.
+
+Usage (vLLM server must be running):
+    python scripts/prepare_paper_corpus.py cas 2606.04557 \\
+        --base-url http://127.0.0.1:8000/v1 --api-key cartridges-local
+
+    python scripts/prepare_paper_corpus.py epicache 2509.17396 \\
+        --base-url http://127.0.0.1:8000/v1 --api-key cartridges-local
+
+    # From a local PDF:
+    python scripts/prepare_paper_corpus.py cas path/to/cas.pdf \\
+        --base-url http://127.0.0.1:8000/v1 --api-key cartridges-local
+
+Then run the benchmark:
+    python scripts/run_benchmark.py cas \\
+        --gpu 0 --device cuda:0 \\
+        --base-url http://127.0.0.1:8000/v1 --api-key cartridges-local \\
+        --train-steps 60 --semantic-judge --run-name cas_baseline
+"""
+
+import argparse
+import json
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "src"))
+
+from cartridges.benchmarks.text_benchmark import (  # noqa: E402
+    generate_bootstrap_questions,
+    _content_passages,
+)
+
+
+def _download_arxiv_pdf(arxiv_id: str, output_path: Path) -> None:
+    import requests
+    url = f"https://arxiv.org/pdf/{arxiv_id}"
+    print(f"Downloading {url} ...")
+    r = requests.get(url, timeout=120, headers={"User-Agent": "Mozilla/5.0"})
+    r.raise_for_status()
+    output_path.write_bytes(r.content)
+    print(f"Saved: {output_path.name}  ({len(r.content) // 1024} KB)")
+
+
+def _extract_pdf_text(pdf_path: Path, max_chars: int) -> str:
+    try:
+        from pypdf import PdfReader
+    except ImportError:
+        raise ImportError("Install pypdf: pip install pypdf")
+    reader = PdfReader(str(pdf_path))
+    pages = [page.extract_text() or "" for page in reader.pages]
+    text = "\n\n".join(p.strip() for p in pages if p.strip())
+    if len(text) > max_chars:
+        text = text[:max_chars]
+        print(f"Truncated to {max_chars:,} chars")
+    return text
+
+
+def _bootstrap_to_eval_spec(
+    corpus_name: str,
+    bootstrap_examples: list[dict],
+) -> list[dict]:
+    """Convert bootstrap Q&A pairs into eval_spec format."""
+    spec = []
+    for i, ex in enumerate(bootstrap_examples, start=1):
+        spec.append({
+            "id": f"{corpus_name}-q{i:02d}",
+            "query": ex["question"].strip(),
+            "answer_prompt": "Answer with only the shortest exact phrase from the paper.",
+            "answers": [ex["expected_answer"].strip().lower()],
+        })
+    return spec
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Prepare a research paper as a run_benchmark.py corpus."
+    )
+    parser.add_argument("name", help="Corpus name (becomes data/{name}/).")
+    parser.add_argument(
+        "source",
+        help="Arxiv ID (e.g. 2606.04557) or path to a local PDF file.",
+    )
+    parser.add_argument("--base-url", default="http://127.0.0.1:8000/v1")
+    parser.add_argument("--api-key", default="cartridges-local")
+    parser.add_argument(
+        "--eval-count", type=int, default=15,
+        help="Number of eval questions to generate for eval_spec.json.",
+    )
+    parser.add_argument(
+        "--max-chars", type=int, default=40000,
+        help="Max characters of paper text to keep (~10K tokens).",
+    )
+    parser.add_argument(
+        "--data-root", default="data",
+        help="Root data directory (default: data/).",
+    )
+    args = parser.parse_args()
+
+    corpus_dir = ROOT / args.data_root / args.name
+    if corpus_dir.exists():
+        print(f"Warning: {corpus_dir} already exists — files will be overwritten.")
+    corpus_dir.mkdir(parents=True, exist_ok=True)
+
+    # ── Step 1: Get the PDF ───────────────────────────────────────────────────
+    pdf_path = Path(args.source)
+    if not pdf_path.exists():
+        # Treat as arxiv ID
+        pdf_cache = corpus_dir / f"{args.name}.pdf"
+        if not pdf_cache.exists():
+            _download_arxiv_pdf(args.source, pdf_cache)
+        else:
+            print(f"Using cached PDF: {pdf_cache.name}")
+        pdf_path = pdf_cache
+        source_id = args.source
+    else:
+        source_id = str(pdf_path.resolve())
+
+    # ── Step 2: Extract text ──────────────────────────────────────────────────
+    print(f"\nExtracting text from {pdf_path.name}...")
+    text = _extract_pdf_text(pdf_path, max_chars=args.max_chars)
+    print(f"{len(text):,} chars, ~{len(text) // 4} tokens")
+    print(f"Content passages: {len(_content_passages(text))}")
+
+    data_txt_path = corpus_dir / "data.txt"
+    data_txt_path.write_text(text, encoding="utf-8")
+    print(f"Saved: {data_txt_path}")
+
+    # ── Step 3: Generate eval spec via vLLM ──────────────────────────────────
+    print(f"\nGenerating {args.eval_count} eval questions via vLLM...")
+    eval_examples = generate_bootstrap_questions(
+        corpus_text=text,
+        eval_spec=[],
+        output_path=corpus_dir / "eval_bootstrap_raw.txt",
+        base_url=args.base_url,
+        api_key=args.api_key,
+        num_questions=args.eval_count,
+    )
+    print(f"Generated {len(eval_examples)} eval Q&A pairs")
+
+    eval_spec = _bootstrap_to_eval_spec(args.name, eval_examples)
+    eval_spec_path = corpus_dir / "eval_spec.json"
+    eval_spec_path.write_text(json.dumps(eval_spec, indent=2), encoding="utf-8")
+    print(f"Saved: {eval_spec_path}")
+
+    # ── Step 4: Metadata ──────────────────────────────────────────────────────
+    metadata = {
+        "title": args.name,
+        "source": source_id,
+        "fetched_at": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+        "original_characters": len(text),
+        "original_tokens": len(text) // 4,
+        "truncated_tokens": len(text) // 4,
+    }
+    (corpus_dir / "metadata.json").write_text(
+        json.dumps(metadata, indent=2), encoding="utf-8"
+    )
+
+    # ── Summary ───────────────────────────────────────────────────────────────
+    print(f"\n{'='*60}")
+    print(f"Corpus ready: {corpus_dir}/")
+    print(f"  data.txt        {len(text):>10,} chars")
+    print(f"  eval_spec.json  {len(eval_spec):>10} questions")
+    print(f"\nEval questions preview:")
+    for item in eval_spec[:5]:
+        print(f"  Q: {item['query'][:70]}")
+        print(f"  A: {item['answers'][0]}")
+    if len(eval_spec) > 5:
+        print(f"  ... and {len(eval_spec) - 5} more")
+
+    print(f"\nNext — run the benchmark:")
+    print(f"  python scripts/run_benchmark.py {args.name} \\")
+    print(f"      --gpu 0 --device cuda:0 \\")
+    print(f"      --base-url {args.base_url} --api-key {args.api_key} \\")
+    print(f"      --train-steps 60 --semantic-judge \\")
+    print(f"      --run-name {args.name}_baseline")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
