@@ -511,9 +511,9 @@ def main() -> int:
     else:
         print(f"Reusing supervision from: {supervision_dir}")
 
-    # Load all training examples
+    # Load training examples (only for cartridges being trained)
     all_examples: dict[str, list[TrainingExample]] = {}
-    for name in CORPUS_ORDER:
+    for name in args.names:
         raw = load_training_examples(supervision_paths[name])
         all_examples[name] = [ex for ex in raw if ex.slice_id == name]
         print(f"  [{name}] {len(all_examples[name])} supervision rows")
@@ -522,6 +522,7 @@ def main() -> int:
     summary = train_joint(
         all_examples=all_examples,
         output_dir=output_dir,
+        train_names=args.names,
         device=args.device,
         cartridge_tokens=args.cartridge_tokens,
         learning_rate=args.learning_rate,
