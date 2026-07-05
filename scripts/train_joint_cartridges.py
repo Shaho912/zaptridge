@@ -64,13 +64,11 @@ from cartridges.train.cartridge import (  # noqa: E402
 )
 
 # Fixed cartridge order — must match eval_multi_cartridge.py joint eval order.
-CORPUS_ORDER = ["skills", "methods", "preferences", "research"]
+CORPUS_ORDER = ["zaptridge_convo", "fpga_convo"]
 
 DEFAULT_CORPUS_PATHS: dict[str, str] = {
-    "skills":      "data/skills.jsonl",
-    "methods":     "data/methods.jsonl",
-    "preferences": "data/preferences.jsonl",
-    "research":    "data/research.jsonl",
+    "zaptridge_convo": "data/zaptridge_convo.jsonl",
+    "fpga_convo":      "data/fpga_convo.jsonl",
 }
 
 
