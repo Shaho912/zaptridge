@@ -57,7 +57,7 @@ QUESTION_SETS: dict[str, list[tuple[str, str]]] = {
         ("What is the end-to-end parse latency in nanoseconds for Add Order?",       "80"),
         ("How many LUTs does the Add Order parser use?",                             "847"),
         ("What bug caused dropped bytes on back-to-back messages?",                  "tready"),
-        ("What is the sustained throughput in cycles per Add Order message, and why is it different from parse latency?", "36"),
+        ("How many bytes long is an Add Order message?",                                        "36"),
         ("What accuracy did the parser achieve on the 10,000 message PCAP sample?", "100"),
     ],
 }
