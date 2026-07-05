@@ -83,6 +83,69 @@ def _extract_pdf_text(pdf_path: Path, max_chars: int) -> str:
     return full_text
 
 
+def _fetch_arxiv_html(arxiv_id: str) -> str | None:
+    """Download the arxiv HTML rendering. Returns HTML string or None if unavailable."""
+    import requests
+    url = f"https://arxiv.org/html/{arxiv_id}"
+    try:
+        r = requests.get(url, timeout=60, headers={"User-Agent": "Mozilla/5.0"})
+        if r.status_code == 200 and "text/html" in r.headers.get("Content-Type", ""):
+            print(f"  Downloaded HTML ({len(r.content) // 1024} KB) from {url}")
+            return r.text
+        print(f"  HTML not available (status {r.status_code}), will use PDF.")
+    except Exception as e:
+        print(f"  HTML fetch failed ({e}), will use PDF.")
+    return None
+
+
+def _extract_html_text(html_content: str, max_chars: int) -> str:
+    """Convert arxiv HTML to plain text using stdlib HTMLParser (no BS4 needed)."""
+    import html as _html
+    import re
+    from html.parser import HTMLParser
+
+    class _Extractor(HTMLParser):
+        SKIP = {"script", "style", "head", "math", "svg", "figure",
+                "cite", "noscript", "nav", "footer", "references"}
+        BLOCK = {"p", "h1", "h2", "h3", "h4", "h5", "h6",
+                 "li", "div", "section", "article", "br", "tr", "td", "th"}
+
+        def __init__(self):
+            super().__init__()
+            self._buf: list[str] = []
+            self._skip = 0
+
+        def handle_starttag(self, tag, attrs):
+            if tag in self.SKIP:
+                self._skip += 1
+            elif tag in self.BLOCK and self._skip == 0:
+                if self._buf and not self._buf[-1].endswith("\n"):
+                    self._buf.append("\n")
+
+        def handle_endtag(self, tag):
+            if tag in self.SKIP:
+                self._skip = max(0, self._skip - 1)
+            elif tag in self.BLOCK and self._skip == 0:
+                if self._buf and not self._buf[-1].endswith("\n"):
+                    self._buf.append("\n")
+
+        def handle_data(self, data):
+            if self._skip == 0:
+                self._buf.append(data)
+
+    extractor = _Extractor()
+    extractor.feed(html_content)
+    text = _html.unescape("".join(extractor._buf))
+    text = re.sub(r"[ \t]+", " ", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    text = re.sub(r"^ +", "", text, flags=re.MULTILINE)
+    text = text.strip()
+    if len(text) > max_chars:
+        text = text[:max_chars]
+        print(f"  Truncated to {max_chars:,} chars (~{max_chars // 4} tokens)")
+    return text
+
+
 def _select_eval_questions(bootstrap_examples: list[dict], n: int) -> list[list[str]]:
     """Pick the N best eval questions from bootstrap output.
 
