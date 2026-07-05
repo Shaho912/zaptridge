@@ -167,6 +167,7 @@ def _generate(
 def _eval_corpus(
     *,
     corpus_name: str,
+    questions: list[tuple[str, str]],
     model,
     tokenizer,
     cache_factory,
@@ -174,7 +175,6 @@ def _eval_corpus(
     max_new_tokens: int,
 ) -> tuple[int, int]:
     """Run all questions for one corpus. Returns (hits, total)."""
-    questions = QUESTION_SETS[corpus_name]
     hits = 0
     for question, expected in questions:
         answer, elapsed = _generate(
