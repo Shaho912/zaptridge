@@ -464,9 +464,13 @@ def main() -> int:
     supervision_dir = Path(args.supervision_dir) if args.supervision_dir else output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Load or build supervision
+    for name in args.names:
+        if name not in CORPUS_ORDER:
+            raise ValueError(f"Unknown corpus '{name}'. Choose from {CORPUS_ORDER}")
+
+    # Load or build supervision (only needed for cartridges being trained)
     supervision_paths = {name: supervision_dir / f"{name}.supervision.jsonl" for name in CORPUS_ORDER}
-    missing = [name for name, p in supervision_paths.items() if not p.exists()]
+    missing = [name for name in args.names if not supervision_paths[name].exists()]
 
     if missing:
         print(f"Supervision not found for: {missing}. Building now...")
