@@ -271,6 +271,7 @@ def train_joint(
     *,
     all_examples: dict[str, list[TrainingExample]],
     output_dir: Path,
+    train_names: list[str],
     device: str,
     cartridge_tokens: int,
     learning_rate: float,
@@ -280,7 +281,16 @@ def train_joint(
     validation_interval: int = 20,
     validation_examples: int = 16,
 ) -> dict[str, Any]:
+    """Joint CAS-style training.
+
+    train_names: cartridges to optimize. Any name in CORPUS_ORDER but NOT in
+    train_names is loaded from output_dir as a frozen distractor — it is present
+    in the KV prefix during every training step but never receives gradient updates.
+    """
     _set_training_seed(seed)
+
+    train_indices = {CORPUS_ORDER.index(n) for n in train_names}
+    frozen_names  = [n for n in CORPUS_ORDER if n not in train_names]
 
     print(f"\nLoading model: {DEFAULT_HF_MODEL_ID}")
     tokenizer = AutoTokenizer.from_pretrained(DEFAULT_HF_MODEL_ID)
@@ -294,44 +304,68 @@ def train_joint(
     for param in model.parameters():
         param.requires_grad_(False)
 
-    # Initialize cartridges from each corpus's system prompt (same as independent training)
+    # Build or load cartridges
     cartridges: list[TrainableKVCartridge] = []
-    for name in CORPUS_ORDER:
-        examples = all_examples[name]
-        cart = initialize_from_prefix_text(
-            model=model, tokenizer=tokenizer,
-            text=examples[0].system_prompt,
-            num_tokens=cartridge_tokens,
-            num_frozen_tokens=1,
-        )
-        cart.to(device)
+    for i, name in enumerate(CORPUS_ORDER):
+        if i in train_indices:
+            # Fresh initialization from corpus prefix text
+            examples = all_examples[name]
+            cart = initialize_from_prefix_text(
+                model=model, tokenizer=tokenizer,
+                text=examples[0].system_prompt,
+                num_tokens=cartridge_tokens,
+                num_frozen_tokens=1,
+            )
+            cart.to(device)
+            print(f"  [{name}] initialized fresh: {cart.num_tokens} slots  [trainable]")
+        else:
+            # Load existing trained cartridge as frozen distractor
+            path = output_dir / f"{name}_cartridge.pt"
+            if not path.exists():
+                raise FileNotFoundError(
+                    f"Frozen cartridge not found: {path}. "
+                    f"Run a full joint training pass first (without --names) "
+                    f"or copy the cartridge from outputs/exp1/."
+                )
+            cart = TrainableKVCartridge.load(path, device=device)
+            for param in cart.parameters():
+                param.requires_grad_(False)
+            print(f"  [{name}] loaded from {path.name}: {cart.num_tokens} slots  [frozen]")
         cartridges.append(cart)
-        print(f"  [{name}] initialized: {cart.num_tokens} slots")
 
-    optimizers = [AdamW(cart.parameters(), lr=learning_rate) for cart in cartridges]
-    for opt in optimizers:
+    # Optimizers only for trainable cartridges
+    optimizers: dict[int, AdamW] = {
+        i: AdamW(cartridges[i].parameters(), lr=learning_rate)
+        for i in train_indices
+    }
+    for opt in optimizers.values():
         opt.zero_grad(set_to_none=True)
 
     val_subsets = {
         name: all_examples[name][:min(validation_examples, len(all_examples[name]))]
-        for name in CORPUS_ORDER
+        for name in train_names
     }
 
-    best_losses = [float("inf")] * len(CORPUS_ORDER)
-    best_states  = [deepcopy(cart.state_dict()) for cart in cartridges]
-    loss_histories: dict[str, list[float]] = {name: [] for name in CORPUS_ORDER}
+    best_losses: dict[int, float] = {i: float("inf") for i in train_indices}
+    best_states: dict[int, dict]  = {
+        i: deepcopy(cartridges[i].state_dict()) for i in train_indices
+    }
+    loss_histories: dict[str, list[float]] = {name: [] for name in train_names}
 
-    total_steps = steps_per_cartridge * len(CORPUS_ORDER)
+    total_steps = steps_per_cartridge * len(train_names)
     print(
         f"\nJoint training: {steps_per_cartridge} steps/cartridge "
-        f"× {len(CORPUS_ORDER)} cartridges = {total_steps} total steps"
+        f"× {len(train_names)} trainable = {total_steps} total steps"
     )
+    if frozen_names:
+        print(f"Frozen distractors: {frozen_names}")
 
     t0 = time.perf_counter()
     for total_step in range(total_steps):
-        target_idx = total_step % len(CORPUS_ORDER)
-        cart_step  = total_step // len(CORPUS_ORDER)
-        name       = CORPUS_ORDER[target_idx]
+        local_idx  = total_step % len(train_names)
+        cart_step  = total_step // len(train_names)
+        name       = train_names[local_idx]
+        target_idx = CORPUS_ORDER.index(name)
         exs        = all_examples[name]
         example    = exs[cart_step % len(exs)]
 
@@ -348,7 +382,7 @@ def train_joint(
         optimizers[target_idx].step()
         optimizers[target_idx].zero_grad(set_to_none=True)
 
-        # Validate and checkpoint best per-cartridge (oracle loss, no distractors)
+        # Validate and checkpoint best (oracle loss)
         should_validate = (
             (cart_step + 1) == steps_per_cartridge
             or ((cart_step + 1) % validation_interval) == 0
@@ -367,35 +401,38 @@ def train_joint(
                     for k, v in cartridges[target_idx].state_dict().items()
                 }
 
-            # Log when all 4 have just been validated (end of a full cycle)
-            if target_idx == len(CORPUS_ORDER) - 1:
+            # Log at the end of each full cycle through train_names
+            if local_idx == len(train_names) - 1:
                 elapsed = time.perf_counter() - t0
                 losses_str = "  ".join(
-                    f"{n}={loss_histories[n][-1]:.4f}" for n in CORPUS_ORDER
+                    f"{n}={loss_histories[n][-1]:.4f}" for n in train_names
                 )
                 print(f"  step {cart_step + 1:>4}/{steps_per_cartridge}  [{elapsed:.0f}s]  {losses_str}")
 
     elapsed_total = time.perf_counter() - t0
 
-    # Restore best checkpoints and save
+    # Save only the trained cartridges (frozen ones are unchanged in output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    for i, name in enumerate(CORPUS_ORDER):
+    for i in train_indices:
+        name = CORPUS_ORDER[i]
         cartridges[i].load_state_dict(best_states[i])
         out_path = output_dir / f"{name}_cartridge.pt"
         cartridges[i].save(out_path)
 
     print(f"\nDone in {elapsed_total:.1f}s")
-    for i, name in enumerate(CORPUS_ORDER):
+    for i in train_indices:
+        name = CORPUS_ORDER[i]
         print(f"  [{name}] best_oracle_loss={best_losses[i]:.4f}")
     print(f"\nCartridges saved to: {output_dir}/")
     print(f"Next: python scripts/eval_multi_cartridge.py --cartridge-dir {output_dir} --mode both")
 
     return {
-        "names": CORPUS_ORDER,
+        "train_names": train_names,
+        "frozen_names": frozen_names,
         "steps_per_cartridge": steps_per_cartridge,
         "total_steps": total_steps,
         "elapsed_seconds": elapsed_total,
-        "best_oracle_losses": {name: best_losses[i] for i, name in enumerate(CORPUS_ORDER)},
+        "best_oracle_losses": {CORPUS_ORDER[i]: best_losses[i] for i in train_indices},
         "loss_histories": loss_histories,
     }
 
