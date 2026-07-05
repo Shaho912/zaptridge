@@ -144,6 +144,40 @@ def _bootstrap_to_eval_spec(
     return spec
 
 
+def _condense_answers(
+    examples: list[dict],
+    base_url: str,
+    api_key: str,
+) -> list[dict]:
+    """Ask vLLM to condense each answer to a short extractable key phrase (1-6 words).
+
+    The goal is to replace full-sentence expected answers with short substrings
+    that will appear verbatim in any correct answer, avoiding semantic judge failures
+    caused by paraphrase mismatch.
+    """
+    from cartridges.clients.vllm_openai import VLLMClient
+    client = VLLMClient(base_url=base_url, api_key=api_key)
+
+    condensed = []
+    for ex in examples:
+        prompt = (
+            "Given this question and answer from a research paper, extract the shortest "
+            "exact key phrase (1 to 6 words) from the answer that uniquely identifies the "
+            "correct response. Output only the phrase, nothing else.\n\n"
+            f"Question: {ex['question']}\n"
+            f"Answer: {ex['expected_answer']}\n"
+            "Key phrase:"
+        )
+        try:
+            phrase = client.complete(prompt, max_tokens=20, temperature=0.0).strip()
+            # Strip surrounding quotes if present
+            phrase = phrase.strip('"\'').strip()
+            condensed.append({**ex, "expected_answer": phrase})
+        except Exception:
+            condensed.append(ex)
+    return condensed
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Prepare a research paper as a run_benchmark.py corpus."
