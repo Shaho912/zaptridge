@@ -160,18 +160,23 @@ def _condense_answers(
 
     condensed = []
     for ex in examples:
-        prompt = (
-            "Given this question and answer from a research paper, extract the shortest "
-            "exact key phrase (1 to 6 words) from the answer that uniquely identifies the "
-            "correct response. Output only the phrase, nothing else.\n\n"
-            f"Question: {ex['question']}\n"
-            f"Answer: {ex['expected_answer']}\n"
-            "Key phrase:"
-        )
+        messages = [
+            {
+                "role": "user",
+                "content": (
+                    "Given this question and answer from a research paper, extract the "
+                    "shortest exact key phrase (1 to 6 words) from the answer that "
+                    "uniquely identifies the correct response. Output only the phrase, "
+                    "nothing else.\n\n"
+                    f"Question: {ex['question']}\n"
+                    f"Answer: {ex['expected_answer']}\n"
+                    "Key phrase:"
+                ),
+            }
+        ]
         try:
-            phrase = client.complete(prompt, max_tokens=20, temperature=0.0).strip()
-            # Strip surrounding quotes if present
-            phrase = phrase.strip('"\'').strip()
+            result = client.chat(messages, max_completion_tokens=20, temperature=0.0)
+            phrase = result.content.strip().strip('"\'').strip()
             condensed.append({**ex, "expected_answer": phrase})
         except Exception:
             condensed.append(ex)
