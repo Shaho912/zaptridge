@@ -44,35 +44,25 @@ from cartridges.core import TrainableKVCartridge    # noqa: E402
 # Each tuple: (question, expected_substring_lowercase)
 # A question is scored correct if expected_substring appears in the answer (case-insensitive).
 QUESTION_SETS: dict[str, list[tuple[str, str]]] = {
-    "skills": [
-        ("How do I start a new session in Luma?",           "/session new"),
-        ("How do I save my progress in Luma?",              "/checkpoint"),
-        ("How do I search across past sessions in Luma?",   "/search"),
-        ("How do I switch between focus modes in Luma?",    "/mode"),
-        ("What does the /export command do in Luma?",       ".luma"),
+    "zaptridge_convo": [
+        ("What hardware platform is Zaptridge targeting for deployment?",           "iphone"),
+        ("What is the central finding about why cartridge updates are difficult?",   "initialization bias"),
+        ("How many delta slots are needed for all facts to be encoded correctly?",   "256"),
+        ("What is the build time for the optimal cartridge configuration?",          "72"),
+        ("What does the Diaz 2025 paper find about keys during cartridge training?", "stable"),
+        ("What unique capability does Zaptridge have that no surveyed paper has?",   "cross-session"),
     ],
-    "methods": [
-        ("How should ablation study results be reported?",  "table"),
-        ("How should baselines be selected for a paper?",   "strongest"),
-        ("How should hyperparameter search be documented?", "search space"),
-    ],
-    "preferences": [
-        ("How should you format your responses?",           "bullet"),
-        ("What should you call me?",                        "shaho"),
-        ("How should you handle things you are uncertain about?", "don't know"),
-        ("What tone should you use?",                       "direct"),
-        ("How long should your responses be?",              "short"),
-    ],
-    "research": [
-        ("What is my research topic?",                      "cartridge"),
-        ("What institution am I at and what is my role?",   "penn"),
-        ("What is the current stage of the research?",      "multi-cartridge"),
-        ("What model and hardware are you using?",          "qwen"),
-        ("What is the main open question in the research?", "routing"),
+    "fpga_convo": [
+        ("How many clock cycles does it take to parse an Add Order message?",        "8"),
+        ("What is the end-to-end parse latency in nanoseconds for Add Order?",       "80"),
+        ("How many LUTs does the Add Order parser use?",                             "847"),
+        ("What bug caused dropped bytes on back-to-back messages?",                  "tready"),
+        ("How many cycles does it take to parse one full Add Order message end-to-end including its length?", "36"),
+        ("What accuracy did the parser achieve on the 10,000 message PCAP sample?", "100"),
     ],
 }
 
-ALL_NAMES = ["skills", "methods", "preferences", "research"]
+ALL_NAMES = ["zaptridge_convo", "fpga_convo"]
 
 
 def _make_combined_cache(
