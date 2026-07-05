@@ -167,6 +167,10 @@ def main() -> int:
         "--data-root", default="data",
         help="Root data directory (default: data/).",
     )
+    parser.add_argument(
+        "--pdf", action="store_true",
+        help="Force PDF extraction instead of arxiv HTML (HTML is default for arxiv IDs).",
+    )
     args = parser.parse_args()
 
     corpus_dir = ROOT / args.data_root / args.name
@@ -174,23 +178,33 @@ def main() -> int:
         print(f"Warning: {corpus_dir} already exists — files will be overwritten.")
     corpus_dir.mkdir(parents=True, exist_ok=True)
 
-    # ── Step 1: Get the PDF ───────────────────────────────────────────────────
-    pdf_path = Path(args.source)
-    if not pdf_path.exists():
-        # Treat as arxiv ID
-        pdf_cache = corpus_dir / f"{args.name}.pdf"
-        if not pdf_cache.exists():
-            _download_arxiv_pdf(args.source, pdf_cache)
-        else:
-            print(f"Using cached PDF: {pdf_cache.name}")
-        pdf_path = pdf_cache
-        source_id = args.source
-    else:
-        source_id = str(pdf_path.resolve())
+    # ── Step 1+2: Get paper text ──────────────────────────────────────────────
+    local_pdf = Path(args.source)
+    text: str | None = None
+    source_id = args.source
 
-    # ── Step 2: Extract text ──────────────────────────────────────────────────
-    print(f"\nExtracting text from {pdf_path.name}...")
-    text = _extract_pdf_text(pdf_path, max_chars=args.max_chars)
+    if local_pdf.exists():
+        # Local file — PDF only
+        print(f"\nExtracting text from local file {args.source}...")
+        text = _extract_pdf_text(local_pdf, max_chars=args.max_chars)
+        source_id = str(local_pdf.resolve())
+    else:
+        # Treat as arxiv ID — try HTML first (much cleaner than PDF for two-column papers)
+        if not args.pdf:
+            print(f"\nFetching arxiv HTML for {args.source}...")
+            html_content = _fetch_arxiv_html(args.source)
+            if html_content:
+                text = _extract_html_text(html_content, max_chars=args.max_chars)
+
+        if text is None:
+            pdf_cache = corpus_dir / f"{args.name}.pdf"
+            if not pdf_cache.exists():
+                _download_arxiv_pdf(args.source, pdf_cache)
+            else:
+                print(f"Using cached PDF: {pdf_cache.name}")
+            print(f"\nExtracting text from {pdf_cache.name}...")
+            text = _extract_pdf_text(pdf_cache, max_chars=args.max_chars)
+
     print(f"{len(text):,} chars, ~{len(text) // 4} tokens")
     print(f"Content passages: {len(_content_passages(text))}")
 
