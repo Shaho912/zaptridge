@@ -42,10 +42,10 @@ from cartridges.data.common import stable_hash, write_json  # noqa: E402
 from cartridges.train.cartridge import train_cartridge  # noqa: E402
 
 DEFAULT_CORPORA: dict[str, str] = {
-    "zorbia":  "data/zorbia.jsonl",
-    "blarvia": "data/blarvia.jsonl",
-    "user_a":  "data/user_a.jsonl",
-    "user_b":  "data/user_b.jsonl",
+    "skills":      "data/skills.jsonl",
+    "methods":     "data/methods.jsonl",
+    "preferences": "data/preferences.jsonl",
+    "research":    "data/research.jsonl",
 }
 
 
