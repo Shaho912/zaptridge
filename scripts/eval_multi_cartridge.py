@@ -44,35 +44,35 @@ from cartridges.core import TrainableKVCartridge    # noqa: E402
 # Each tuple: (question, expected_substring_lowercase)
 # A question is scored correct if expected_substring appears in the answer (case-insensitive).
 QUESTION_SETS: dict[str, list[tuple[str, str]]] = {
-    "zorbia": [
-        ("What is the capital of Zorbia?",        "blenthor"),
-        ("What is the population of Zorbia?",     "3.2"),
-        ("What is the currency of Zorbia?",       "zorn"),
-        ("Who is the president of Zorbia?",       "quellan"),
-        ("What is Zorbia's national sport?",      "driftball"),
+    "skills": [
+        ("How do I start a new session in Luma?",           "/session new"),
+        ("How do I save my progress in Luma?",              "/checkpoint"),
+        ("How do I search across past sessions in Luma?",   "/search"),
+        ("How do I switch between focus modes in Luma?",    "/mode"),
+        ("What does the /export command do in Luma?",       ".luma"),
     ],
-    "blarvia": [
-        ("What is the capital of Blarvia?",           "koveth"),
-        ("What language do people speak in Blarvia?", "blarvic"),
-        ("What is Blarvia's main export?",            "mirrium"),
+    "methods": [
+        ("How should ablation study results be reported?",  "table"),
+        ("How should baselines be selected for a paper?",   "strongest"),
+        ("How should hyperparameter search be documented?", "search space"),
     ],
-    "user_a": [
-        ("What is Valen Drex's occupation?",          "computational materialist"),
-        ("What company does Valen Drex work for?",    "solven dynamics"),
-        ("Who is Valen Drex's partner?",              "aryn koss"),
-        ("What city does Valen Drex live in?",        "tethervale"),
-        ("What is Valen Drex's hobby?",               "hexdraft"),
+    "preferences": [
+        ("How should you format your responses?",           "bullet"),
+        ("What should you call me?",                        "shaho"),
+        ("How should you handle things you are uncertain about?", "don't know"),
+        ("What tone should you use?",                       "direct"),
+        ("How long should your responses be?",              "short"),
     ],
-    "user_b": [
-        ("What is Sorra Whitten's occupation?",       "acoustic surveyor"),
-        ("What company does Sorra Whitten work for?", "nerith oceanic"),
-        ("Who is Sorra Whitten's partner?",           "dax quellan"),
-        ("What city does Sorra Whitten live in?",     "port frennis"),
-        ("What is Sorra Whitten's hobby?",            "lacework cartography"),
+    "research": [
+        ("What is my research topic?",                      "cartridge"),
+        ("What institution am I at and what is my role?",   "penn"),
+        ("What is the current stage of the research?",      "multi-cartridge"),
+        ("What model and hardware are you using?",          "qwen"),
+        ("What is the main open question in the research?", "routing"),
     ],
 }
 
-ALL_NAMES = ["zorbia", "blarvia", "user_a", "user_b"]
+ALL_NAMES = ["skills", "methods", "preferences", "research"]
 
 
 def _make_combined_cache(
