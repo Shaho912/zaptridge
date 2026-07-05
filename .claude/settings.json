@@ -6,7 +6,8 @@
       "Bash(python scripts/plot_bootstrap.py)",
       "Bash(python scripts/plot_steps.py)",
       "Bash(gh api *)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(git status *)"
     ]
   }
 }
