@@ -200,7 +200,7 @@ def main() -> int:
     parser.add_argument("--output-dir", default="outputs/exp1",
                         help="Directory for cartridges and supervision JSONLs.")
     parser.add_argument("--names", nargs="+", default=list(DEFAULT_CORPORA.keys()),
-                        help="Corpora to train. Default: zorbia blarvia user_a user_b.")
+                        help="Corpora to train. Default: skills methods preferences research.")
     parser.add_argument("--cartridge-tokens", type=int, default=512)
     parser.add_argument("--steps", type=int, default=240,
                         help="Training steps per cartridge (240 for <=50 rows).")
