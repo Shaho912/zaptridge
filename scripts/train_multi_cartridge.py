@@ -15,10 +15,10 @@ Usage (on DGX — no vLLM needed):
         --steps 240 \
         --device cuda:0
 
-    # Retrain only user cartridges (supervision already built):
+    # Retrain only personal cartridges (supervision already built):
     python scripts/train_multi_cartridge.py \
         --output-dir outputs/exp1 \
-        --names user_a user_b \
+        --names preferences research \
         --skip-supervision \
         --steps 240
 """
