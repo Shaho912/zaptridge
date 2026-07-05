@@ -64,13 +64,13 @@ from cartridges.train.cartridge import (  # noqa: E402
 )
 
 # Fixed cartridge order — must match eval_multi_cartridge.py joint eval order.
-CORPUS_ORDER = ["zorbia", "blarvia", "user_a", "user_b"]
+CORPUS_ORDER = ["skills", "methods", "preferences", "research"]
 
 DEFAULT_CORPUS_PATHS: dict[str, str] = {
-    "zorbia":  "data/zorbia.jsonl",
-    "blarvia": "data/blarvia.jsonl",
-    "user_a":  "data/user_a.jsonl",
-    "user_b":  "data/user_b.jsonl",
+    "skills":      "data/skills.jsonl",
+    "methods":     "data/methods.jsonl",
+    "preferences": "data/preferences.jsonl",
+    "research":    "data/research.jsonl",
 }
 
 
