@@ -224,7 +224,15 @@ def main() -> int:
         cartridges[name] = cart
         print(f"  [{name}] {cart.num_tokens} slots, {cart.num_layers} layers")
 
-    eval_names = [n for n in args.names if n in QUESTION_SETS]
+    # Build per-corpus question sets (hardcoded or loaded from JSON)
+    question_sets: dict[str, list[tuple[str, str]]] = {}
+    for name in args.names:
+        qs = _load_question_set(name, cartridge_dir)
+        if qs:
+            question_sets[name] = qs
+        else:
+            print(f"  [{name}] Warning: no eval questions found — skipping in eval.")
+    eval_names = [n for n in args.names if n in question_sets]
     oracle_scores: dict[str, tuple[int, int]] = {}
     joint_scores:  dict[str, tuple[int, int]] = {}
 
