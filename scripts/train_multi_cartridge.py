@@ -314,7 +314,7 @@ def main() -> int:
         print(f"  [{name:<8}] best_loss={s['best_loss']:.4f}  {s['elapsed_seconds']:.0f}s")
     print(f"\nCartridges in: {output_dir}/")
     print("  " + "  ".join(f"{n}_cartridge.pt" for n in args.names))
-    print(f"\nNext: python scripts/eval_multi_cartridge.py --cartridge-dir {output_dir} --mode both")
+    print(f"\nNext: python scripts/eval_multi_cartridge.py --cartridge-dir {output_dir}")
 
     write_json(output_dir / "train_summary.json", {
         "names": args.names,
