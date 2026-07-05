@@ -247,6 +247,7 @@ def main() -> int:
             cache_factory = lambda c=cart: c.as_cache(model.config)
             hits, total = _eval_corpus(
                 corpus_name=name,
+                questions=question_sets[name],
                 model=model,
                 tokenizer=tokenizer,
                 cache_factory=cache_factory,
