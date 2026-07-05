@@ -21,7 +21,7 @@ Usage:
     # Specify cartridge order (order matters for concatenation):
     python scripts/eval_multi_cartridge.py \\
         --cartridge-dir outputs/exp1 \\
-        --names zorbia blarvia user_a user_b
+        --names skills methods preferences research
 """
 
 import argparse
