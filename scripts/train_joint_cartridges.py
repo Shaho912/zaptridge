@@ -446,7 +446,7 @@ def main() -> int:
     parser.add_argument("--output-dir", default="outputs/exp2")
     parser.add_argument("--names", nargs="+", default=CORPUS_ORDER,
                         help="Cartridges to train. Others are loaded from --output-dir as "
-                             "frozen distractors. Default: all 4.")
+                             "frozen distractors. Default: skills methods preferences research.")
     parser.add_argument("--supervision-dir", default=None,
                         help="Directory containing {name}.supervision.jsonl files. "
                              "Defaults to --output-dir. Point to outputs/exp1 to reuse "
