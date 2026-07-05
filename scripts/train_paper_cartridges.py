@@ -229,17 +229,29 @@ def main() -> int:
         pdf_dir.mkdir(exist_ok=True)
 
         for name, source in papers:
-            pdf_path = Path(source)
-            if not pdf_path.exists():
-                cached = pdf_dir / f"{name}.pdf"
-                if not cached.exists():
-                    _download_arxiv_pdf(source, cached)
-                else:
-                    print(f"  [{name}] Using cached: {cached.name}")
-                pdf_path = cached
+            local_pdf = Path(source)
+            text: str | None = None
 
-            print(f"  [{name}] Extracting text from {pdf_path.name}...")
-            text = _extract_pdf_text(pdf_path, max_chars=args.max_chars)
+            if local_pdf.exists():
+                print(f"  [{name}] Extracting text from local file {source}...")
+                text = _extract_pdf_text(local_pdf, max_chars=args.max_chars)
+            else:
+                # Try HTML first (much cleaner than PDF for two-column papers)
+                if not args.pdf:
+                    print(f"  [{name}] Fetching arxiv HTML for {source}...")
+                    html_content = _fetch_arxiv_html(source)
+                    if html_content:
+                        text = _extract_html_text(html_content, max_chars=args.max_chars)
+
+                if text is None:
+                    cached = pdf_dir / f"{name}.pdf"
+                    if not cached.exists():
+                        _download_arxiv_pdf(source, cached)
+                    else:
+                        print(f"  [{name}] Using cached: {cached.name}")
+                    print(f"  [{name}] Extracting text from {cached.name}...")
+                    text = _extract_pdf_text(cached, max_chars=args.max_chars)
+
             paper_texts[name] = text
             print(f"  [{name}] {len(text):,} chars")
 
