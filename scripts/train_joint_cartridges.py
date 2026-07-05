@@ -2,7 +2,7 @@
 """Joint CAS-style cartridge training — Experiment 2.
 
 At each training step:
-  1. Pick a target cartridge (round-robin: zorbia → blarvia → user_a → user_b)
+  1. Pick a target cartridge (round-robin: skills → methods → preferences → research)
   2. Sample a supervision row from that cartridge's corpus
   3. Build a combined KV cache with ALL 4 cartridges concatenated in fixed order —
      but only the target cartridge's K/V tensors retain requires_grad=True
