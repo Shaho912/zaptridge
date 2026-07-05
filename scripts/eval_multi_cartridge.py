@@ -275,6 +275,7 @@ def main() -> int:
             print(f"\n── {name.upper()} ──")
             hits, total = _eval_corpus(
                 corpus_name=name,
+                questions=question_sets[name],
                 model=model,
                 tokenizer=tokenizer,
                 cache_factory=joint_cache_factory,
