@@ -70,7 +70,7 @@ QUESTION_SETS: dict[str, list[tuple[str, str]]] = {
         ("What is the central finding about why cartridge updates are difficult?",   "initialization bias"),
         ("How many delta slots are needed for all facts to be encoded correctly?",   "256"),
         ("What is the build time for the optimal cartridge configuration?",          "72"),
-        ("What does the Diaz 2025 paper find about how much keys move during cartridge training?", "very little"),
+        ("What does the Diaz 2025 paper find about how much keys move during cartridge training?", "barely move"),
         ("In one phrase, what is the single capability that distinguishes Zaptridge from every paper surveyed?", "cross-session"),
     ],
     "fpga_convo": [
