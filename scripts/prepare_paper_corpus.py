@@ -276,16 +276,23 @@ def main() -> int:
     print(f"Saved: {data_txt_path}")
 
     # ── Step 3: Generate eval spec via vLLM ──────────────────────────────────
-    print(f"\nGenerating {args.eval_count} eval questions via vLLM...")
+    # Oversample by 2x so we have room to filter metadata questions
+    oversample = args.eval_count * 2
+    print(f"\nGenerating {oversample} eval questions via vLLM (will filter to {args.eval_count})...")
     eval_examples = generate_bootstrap_questions(
         corpus_text=text,
         eval_spec=[],
         output_path=corpus_dir / "eval_bootstrap_raw.txt",
         base_url=args.base_url,
         api_key=args.api_key,
-        num_questions=args.eval_count,
+        num_questions=oversample,
     )
     print(f"Generated {len(eval_examples)} eval Q&A pairs")
+
+    before = len(eval_examples)
+    eval_examples = _filter_metadata_questions(eval_examples)
+    print(f"After metadata filter: {len(eval_examples)}/{before} kept")
+    eval_examples = eval_examples[: args.eval_count]
 
     if args.condense_answers:
         print("Condensing expected answers to short key phrases via vLLM...")
