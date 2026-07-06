@@ -144,6 +144,19 @@ def _bootstrap_to_eval_spec(
     return spec
 
 
+_METADATA_RE = re.compile(
+    r"\b(affili|licen[sc]|arxiv|doi|isbn|company|companies|author"
+    r"|who (are|is) the|copyright|publish|journal|venue|institution"
+    r"|cite|citation|reference)\b",
+    re.IGNORECASE,
+)
+
+
+def _filter_metadata_questions(examples: list[dict]) -> list[dict]:
+    """Drop questions about authorship, IDs, licenses, citations — format-sensitive."""
+    return [ex for ex in examples if not _METADATA_RE.search(ex["question"])]
+
+
 def _condense_answers(
     examples: list[dict],
     base_url: str,
