@@ -416,7 +416,7 @@ def train_joint(
     # Save only the trained cartridges (frozen ones are unchanged in output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     for i in train_indices:
-        name = CORPUS_ORDER[i]
+        name = corpus_order[i]
         cartridges[i].load_state_dict(best_states[i])
         out_path = output_dir / f"{name}_cartridge.pt"
         cartridges[i].save(out_path)
