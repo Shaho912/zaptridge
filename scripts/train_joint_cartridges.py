@@ -366,7 +366,7 @@ def train_joint(
         local_idx  = total_step % len(train_names)
         cart_step  = total_step // len(train_names)
         name       = train_names[local_idx]
-        target_idx = CORPUS_ORDER.index(name)
+        target_idx = corpus_order.index(name)
         exs        = all_examples[name]
         example    = exs[cart_step % len(exs)]
 
