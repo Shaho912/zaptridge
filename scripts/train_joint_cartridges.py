@@ -307,7 +307,7 @@ def train_joint(
 
     # Build or load cartridges
     cartridges: list[TrainableKVCartridge] = []
-    for i, name in enumerate(CORPUS_ORDER):
+    for i, name in enumerate(corpus_order):
         if i in train_indices:
             # Fresh initialization from corpus prefix text
             examples = all_examples[name]
