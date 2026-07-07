@@ -374,6 +374,7 @@ def train_joint(
             model=model, tokenizer=tokenizer,
             cartridges=cartridges, target_idx=target_idx,
             example=example, device=device,
+            corpus_order=corpus_order,
         )
         loss_val = float(loss.item())
         loss_histories[name].append(loss_val)
