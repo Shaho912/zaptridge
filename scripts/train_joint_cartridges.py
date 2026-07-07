@@ -206,6 +206,7 @@ def _compute_joint_loss(
     target_idx: int,
     example: TrainingExample,
     device: str,
+    corpus_order: list[str] | None = None,
 ) -> torch.Tensor:
     """Distillation loss for target cartridge with all others loaded as frozen distractors.
 
