@@ -474,7 +474,7 @@ def main() -> int:
 
     # Load or build supervision (only needed for cartridges being trained)
     supervision_paths = {name: supervision_dir / f"{name}.supervision.jsonl" for name in corpus_order}
-    missing = [name for name in args.names if not supervision_paths[name].exists()]
+    missing = [name for name in train_names if not supervision_paths[name].exists()]
 
     if missing:
         print(f"Supervision not found for: {missing}. Building now...")
