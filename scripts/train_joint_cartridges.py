@@ -279,17 +279,19 @@ def train_joint(
     seed: int = 0,
     validation_interval: int = 20,
     validation_examples: int = 16,
+    corpus_order: list[str] | None = None,
 ) -> dict[str, Any]:
     """Joint CAS-style training.
 
-    train_names: cartridges to optimize. Any name in CORPUS_ORDER but NOT in
+    train_names: cartridges to optimize. Any name in corpus_order but NOT in
     train_names is loaded from output_dir as a frozen distractor — it is present
     in the KV prefix during every training step but never receives gradient updates.
     """
     _set_training_seed(seed)
+    corpus_order = corpus_order or CORPUS_ORDER
 
-    train_indices = {CORPUS_ORDER.index(n) for n in train_names}
-    frozen_names  = [n for n in CORPUS_ORDER if n not in train_names]
+    train_indices = {corpus_order.index(n) for n in train_names}
+    frozen_names  = [n for n in corpus_order if n not in train_names]
 
     print(f"\nLoading model: {DEFAULT_HF_MODEL_ID}")
     tokenizer = AutoTokenizer.from_pretrained(DEFAULT_HF_MODEL_ID)
