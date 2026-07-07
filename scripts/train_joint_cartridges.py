@@ -63,7 +63,7 @@ from cartridges.train.cartridge import (  # noqa: E402
     _compute_example_loss,
 )
 
-# Fixed cartridge order — must match eval_multi_cartridge.py joint eval order.
+# Default cartridge order — overridable via --corpus-order CLI arg.
 CORPUS_ORDER = ["zaptridge_convo", "fpga_convo"]
 
 DEFAULT_CORPUS_PATHS: dict[str, str] = {
