@@ -434,7 +434,7 @@ def train_joint(
         "steps_per_cartridge": steps_per_cartridge,
         "total_steps": total_steps,
         "elapsed_seconds": elapsed_total,
-        "best_oracle_losses": {CORPUS_ORDER[i]: best_losses[i] for i in train_indices},
+        "best_oracle_losses": {corpus_order[i]: best_losses[i] for i in train_indices},
         "loss_histories": loss_histories,
     }
 
