@@ -446,9 +446,12 @@ def main() -> int:
         description="Train cartridges jointly with CAS-style distractor supervision (Experiment 2)."
     )
     parser.add_argument("--output-dir", default="outputs/exp2")
-    parser.add_argument("--names", nargs="+", default=CORPUS_ORDER,
-                        help="Cartridges to train. Others are loaded from --output-dir as "
-                             "frozen distractors. Default: zaptridge_convo fpga_convo.")
+    parser.add_argument("--names", nargs="+", default=None,
+                        help="Cartridges to train. Others in --corpus-order are loaded as "
+                             "frozen distractors. Defaults to --corpus-order (train all).")
+    parser.add_argument("--corpus-order", nargs="+", default=None,
+                        help="Fixed concatenation order for joint eval. "
+                             "Defaults to zaptridge_convo fpga_convo if not set.")
     parser.add_argument("--supervision-dir", default=None,
                         help="Directory containing {name}.supervision.jsonl files. "
                              "Defaults to --output-dir. Point to outputs/exp1 to reuse "
