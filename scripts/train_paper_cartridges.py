@@ -313,9 +313,20 @@ def main() -> int:
                 torch.cuda.empty_cache()
 
             # Save eval questions alongside cartridge for auto-loading by eval_multi_cartridge.py
-            eval_questions = _select_eval_questions(bootstrap_examples, n=args.eval_questions)
             eval_path = output_dir / f"{name}_eval_questions.json"
-            eval_path.write_text(json.dumps(eval_questions, indent=2), encoding="utf-8")
+            if args.eval_questions_dir:
+                src = Path(args.eval_questions_dir) / name / "eval_questions.json"
+                if src.exists():
+                    shutil.copy2(src, eval_path)
+                    print(f"  [{name}] Copied eval questions from {src}")
+                    eval_questions = json.loads(src.read_text(encoding="utf-8"))
+                else:
+                    print(f"  [{name}] Warning: {src} not found — falling back to bootstrap eval questions")
+                    eval_questions = _select_eval_questions(bootstrap_examples, n=args.eval_questions)
+                    eval_path.write_text(json.dumps(eval_questions, indent=2), encoding="utf-8")
+            else:
+                eval_questions = _select_eval_questions(bootstrap_examples, n=args.eval_questions)
+                eval_path.write_text(json.dumps(eval_questions, indent=2), encoding="utf-8")
 
             elapsed = time.perf_counter() - t0
             print(f"  [{name}] Done in {elapsed:.1f}s — supervision: {supervision_paths[name].name}")
