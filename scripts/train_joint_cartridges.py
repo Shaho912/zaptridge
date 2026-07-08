@@ -494,6 +494,13 @@ def main() -> int:
     parser.add_argument("--learning-rate", type=float, default=3e-3)
     parser.add_argument("--validation-interval", type=int, default=20,
                         help="Validate every N steps per cartridge.")
+    parser.add_argument("--p-isolation", type=float, default=0.75,
+                        help="Probability of training a step in isolation (no distractors). "
+                             "CAS paper uses 0.75. Set to 0.0 for always-joint (old behavior).")
+    parser.add_argument("--k-min", type=int, default=1,
+                        help="Min number of distractors to sample on non-isolation steps.")
+    parser.add_argument("--k-max", type=int, default=None,
+                        help="Max distractors on non-isolation steps. Defaults to all others.")
     parser.add_argument("--device", default="cuda:0")
     args = parser.parse_args()
 
