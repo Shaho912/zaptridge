@@ -23,8 +23,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 _HF_URL = (
-    "https://huggingface.co/datasets/kbressem/LongHealth"
-    "/resolve/main/data/benchmark_v5.json"
+    "https://raw.githubusercontent.com/kbressem/LongHealth"
+    "/main/data/benchmark_v5.json"
 )
 _CACHE_PATH = ROOT / "data" / "longhealth_benchmark_v5.json"
 
