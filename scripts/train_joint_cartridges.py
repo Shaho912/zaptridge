@@ -591,6 +591,18 @@ def main() -> int:
     )
 
     write_json(output_dir / "train_joint_summary.json", summary)
+
+    if args.eval_questions_dir:
+        eq_root = Path(args.eval_questions_dir)
+        for name in corpus_order:
+            src = eq_root / name / "eval_questions.json"
+            dst = output_dir / f"{name}_eval_questions.json"
+            if src.exists():
+                shutil.copy2(src, dst)
+                print(f"  [{name}] eval questions → {dst.name}")
+            else:
+                print(f"  [{name}] Warning: {src} not found — eval will use auto-generated questions if any")
+
     return 0
 
 
