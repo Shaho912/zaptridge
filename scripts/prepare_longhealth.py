@@ -70,9 +70,8 @@ def _make_eval_questions(patient: dict, n: int = 8) -> list[list[str]]:
             "D": q.get("answer_d", ""),
             "E": q.get("answer_e", ""),
         }
-        # 'correct' is a letter like 'a', 'b', 'c', 'd', 'e'
-        correct_letter = str(q.get("correct", "a")).upper()
-        correct_text = options.get(correct_letter, "")
+        # 'correct' is the full text of the correct answer option
+        correct_text = q.get("correct", "")
         if not correct_text:
             continue
 
