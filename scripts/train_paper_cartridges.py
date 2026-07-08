@@ -233,8 +233,15 @@ def main() -> int:
             text: str | None = None
 
             if local_pdf.exists():
-                print(f"  [{name}] Extracting text from local file {source}...")
-                text = _extract_pdf_text(local_pdf, max_chars=args.max_chars)
+                if local_pdf.suffix == ".txt":
+                    print(f"  [{name}] Reading text file {source}...")
+                    text = local_pdf.read_text(encoding="utf-8")
+                    if len(text) > args.max_chars:
+                        text = text[:args.max_chars]
+                        print(f"  [{name}] Truncated to {args.max_chars:,} chars")
+                else:
+                    print(f"  [{name}] Extracting text from local file {source}...")
+                    text = _extract_pdf_text(local_pdf, max_chars=args.max_chars)
             else:
                 # Try HTML first (much cleaner than PDF for two-column papers)
                 if not args.pdf:
