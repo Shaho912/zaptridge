@@ -9,7 +9,8 @@
       "WebFetch(domain:github.com)",
       "Bash(git status *)",
       "Bash(git push *)",
-      "Bash(python3 -c \"import json; f=open\\('c:/Users/solam/Downloads/AI_Hardware/zaptridges/src/cartridges/eval/common.py'\\); print\\(f.read\\(\\)\\)\")"
+      "Bash(python3 -c \"import json; f=open\\('c:/Users/solam/Downloads/AI_Hardware/zaptridges/src/cartridges/eval/common.py'\\); print\\(f.read\\(\\)\\)\")",
+      "WebFetch(domain:arxiv.org)"
     ]
   }
 }
