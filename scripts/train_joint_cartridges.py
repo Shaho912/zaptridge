@@ -298,7 +298,9 @@ def train_joint(
     train_names is loaded from output_dir as a frozen distractor.
     """
     _set_training_seed(seed)
+    rng = random.Random(seed)
     corpus_order = corpus_order or CORPUS_ORDER
+    _k_max = k_max if k_max is not None else len(corpus_order) - 1
 
     train_indices = {corpus_order.index(n) for n in train_names}
     frozen_names  = [n for n in corpus_order if n not in train_names]
