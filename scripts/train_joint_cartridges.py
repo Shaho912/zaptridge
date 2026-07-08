@@ -507,6 +507,14 @@ def main() -> int:
     parser.add_argument("--k-max", type=int, default=None,
                         help="Max distractors on non-isolation steps. Defaults to all others.")
     parser.add_argument("--device", default="cuda:0")
+    parser.add_argument(
+        "--eval-questions-dir", default=None, metavar="DIR",
+        help=(
+            "If set, copy pre-made eval questions from DIR/{name}/eval_questions.json "
+            "to the output dir. Use with LongHealth corpora prepared by "
+            "prepare_longhealth.py."
+        ),
+    )
     args = parser.parse_args()
 
     output_dir = Path(args.output_dir)
