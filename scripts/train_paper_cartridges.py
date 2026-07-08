@@ -203,6 +203,15 @@ def main() -> int:
                         help="Skip vLLM bootstrap; assume supervision JSONLs already exist.")
     parser.add_argument("--pdf", action="store_true",
                         help="Force PDF extraction instead of arxiv HTML (HTML is default for arxiv IDs).")
+    parser.add_argument(
+        "--eval-questions-dir", default=None,
+        metavar="DIR",
+        help=(
+            "If set, copy pre-made eval questions from DIR/{name}/eval_questions.json "
+            "instead of auto-generating from bootstrap. Useful for LongHealth corpora "
+            "where benchmark MCQ questions are more reliable than bootstrap questions."
+        ),
+    )
     args = parser.parse_args()
 
     output_dir = Path(args.output_dir)
