@@ -208,18 +208,21 @@ def _compute_joint_loss(
     example: TrainingExample,
     device: str,
     corpus_order: list[str] | None = None,
+    active_indices: list[int] | None = None,
 ) -> torch.Tensor:
-    """Distillation loss for target cartridge with all others loaded as frozen distractors.
+    """Distillation loss for target cartridge with a subset of others as frozen distractors.
 
-    The combined cache has fixed order matching eval_multi_cartridge.py.
-    Only target_idx cartridge's K/V tensors carry requires_grad; the rest are detached
-    so backprop updates only the target.
+    active_indices: cartridge indices to include in the combined KV prefix (in order).
+    Defaults to all cartridges. Only target_idx's tensors retain requires_grad.
     """
+    if active_indices is None:
+        active_indices = list(range(len(cartridges)))
     num_layers = cartridges[0].num_layers
     combined_pkv = []
     for layer_idx in range(num_layers):
         keys, values = [], []
-        for idx, cart in enumerate(cartridges):
+        for idx in active_indices:
+            cart = cartridges[idx]
             k, v = cart.layer(layer_idx)
             if idx != target_idx:
                 k, v = k.detach(), v.detach()
