@@ -450,7 +450,8 @@ def train_joint(
         out_path = output_dir / f"{name}_cartridge.pt"
         cartridges[i].save(out_path)
 
-    print(f"\nDone in {elapsed_total:.1f}s")
+    actual_iso_rate = isolation_count / total_steps
+    print(f"\nDone in {elapsed_total:.1f}s  (isolation rate: {actual_iso_rate:.2f})")
     for i in train_indices:
         name = corpus_order[i]
         print(f"  [{name}] best_oracle_loss={best_losses[i]:.4f}")
@@ -463,6 +464,8 @@ def train_joint(
         "steps_per_cartridge": steps_per_cartridge,
         "total_steps": total_steps,
         "elapsed_seconds": elapsed_total,
+        "p_isolation": p_isolation,
+        "actual_isolation_rate": actual_iso_rate,
         "best_oracle_losses": {corpus_order[i]: best_losses[i] for i in train_indices},
         "loss_histories": loss_histories,
     }
