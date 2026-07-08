@@ -1,17 +1,21 @@
 #!/usr/bin/env python3
 """Joint CAS-style cartridge training — Experiment 2.
 
+Implements mixed-visibility training as described in the CAS paper (Eyuboglu et al. 2025):
+
 At each training step:
-  1. Pick a target cartridge (round-robin: zaptridge_convo → fpga_convo)
+  1. Pick a target cartridge (round-robin)
   2. Sample a supervision row from that cartridge's corpus
-  3. Build a combined KV cache with ALL 4 cartridges concatenated in fixed order —
-     but only the target cartridge's K/V tensors retain requires_grad=True
-  4. Compute distillation loss on the target row and backprop into target only
+  3. With probability p_isolation (default 0.75): train target alone — clean signal
+     With probability 1-p_isolation: sample k random distractors, build combined KV
+     cache with target + distractors, backprop only into target
+  4. Checkpoint best by oracle validation loss (target alone, no distractors)
 
-This teaches each cartridge to answer its own questions correctly even when the
-others are simultaneously present in the KV prefix.
+The isolation probability is the key CAS insight: 75% of steps give a clean gradient
+signal so each cartridge fully learns its content; 25% of steps teach robustness to
+joint context. Training 100% with distractors (the old behavior) prevents convergence.
 
---steps N means N gradient updates per cartridge (total: N × 4).
+--steps N means N gradient updates per cartridge (total: N × num_cartridges).
 Use the same N as Experiment 1 for a fair comparison.
 
 Usage (on DGX — no vLLM needed):
