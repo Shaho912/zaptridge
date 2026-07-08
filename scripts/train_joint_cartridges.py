@@ -284,12 +284,18 @@ def train_joint(
     validation_interval: int = 20,
     validation_examples: int = 16,
     corpus_order: list[str] | None = None,
+    p_isolation: float = 0.75,
+    k_min: int = 1,
+    k_max: int | None = None,
 ) -> dict[str, Any]:
-    """Joint CAS-style training.
+    """Joint CAS-style training with mixed-visibility (Piso) as in the CAS paper.
+
+    Each step either trains the target cartridge in isolation (with probability
+    p_isolation) or with k randomly sampled distractors (probability 1-p_isolation).
+    p_isolation=0.75 matches the CAS paper default.
 
     train_names: cartridges to optimize. Any name in corpus_order but NOT in
-    train_names is loaded from output_dir as a frozen distractor — it is present
-    in the KV prefix during every training step but never receives gradient updates.
+    train_names is loaded from output_dir as a frozen distractor.
     """
     _set_training_seed(seed)
     corpus_order = corpus_order or CORPUS_ORDER
