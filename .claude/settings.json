@@ -10,7 +10,11 @@
       "Bash(git status *)",
       "Bash(git push *)",
       "Bash(python3 -c \"import json; f=open\\('c:/Users/solam/Downloads/AI_Hardware/zaptridges/src/cartridges/eval/common.py'\\); print\\(f.read\\(\\)\\)\")",
-      "WebFetch(domain:arxiv.org)"
+      "WebFetch(domain:arxiv.org)",
+      "WebFetch(domain:huggingface.co)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(curl -s https://api.github.com/repos/kbressem/LongHealth/contents/data)",
+      "Bash(python3 -c \"import json,sys; files=[f['name'] for f in json.load\\(sys.stdin\\)]; print\\('\\\\n'.join\\(files[:20]\\)\\)\")"
     ]
   }
 }
