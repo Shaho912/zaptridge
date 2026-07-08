@@ -370,9 +370,11 @@ def train_joint(
         f"\nJoint training: {steps_per_cartridge} steps/cartridge "
         f"× {len(train_names)} trainable = {total_steps} total steps"
     )
+    print(f"  p_isolation={p_isolation}  k_distractor=[{k_min},{_k_max}]")
     if frozen_names:
         print(f"Frozen distractors: {frozen_names}")
 
+    isolation_count = 0
     t0 = time.perf_counter()
     for total_step in range(total_steps):
         local_idx  = total_step % len(train_names)
@@ -382,12 +384,27 @@ def train_joint(
         exs        = all_examples[name]
         example    = exs[cart_step % len(exs)]
 
-        loss = _compute_joint_loss(
-            model=model, tokenizer=tokenizer,
-            cartridges=cartridges, target_idx=target_idx,
-            example=example, device=device,
-            corpus_order=corpus_order,
-        )
+        if rng.random() < p_isolation:
+            # Isolation step — target cartridge only, clean gradient signal
+            isolation_count += 1
+            loss = _compute_example_loss(
+                model=model, tokenizer=tokenizer,
+                cartridge=cartridges[target_idx],
+                example=example, device=device,
+            )
+        else:
+            # Distractor step — sample k random distractors from the other cartridges
+            other_indices = [i for i in range(len(corpus_order)) if i != target_idx]
+            k = rng.randint(k_min, min(_k_max, len(other_indices)))
+            distractor_indices = rng.sample(other_indices, k)
+            active_indices = sorted([target_idx] + distractor_indices)
+            loss = _compute_joint_loss(
+                model=model, tokenizer=tokenizer,
+                cartridges=cartridges, target_idx=target_idx,
+                active_indices=active_indices,
+                example=example, device=device,
+                corpus_order=corpus_order,
+            )
         loss_val = float(loss.item())
         loss_histories[name].append(loss_val)
         loss.backward()
