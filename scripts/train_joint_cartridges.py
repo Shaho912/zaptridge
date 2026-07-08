@@ -36,6 +36,7 @@ Usage (on DGX — no vLLM needed):
 
 import argparse
 import json
+import random
 import re
 import sys
 import time
