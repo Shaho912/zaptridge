@@ -423,7 +423,7 @@ def train_joint(
 
     print(f"\nDone in {elapsed_total:.1f}s")
     for i in train_indices:
-        name = CORPUS_ORDER[i]
+        name = corpus_order[i]
         print(f"  [{name}] best_oracle_loss={best_losses[i]:.4f}")
     print(f"\nCartridges saved to: {output_dir}/")
     print(f"Next: python scripts/eval_multi_cartridge.py --cartridge-dir {output_dir} --mode both")
