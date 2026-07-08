@@ -572,6 +572,9 @@ def main() -> int:
         steps_per_cartridge=args.steps,
         validation_interval=args.validation_interval,
         corpus_order=corpus_order,
+        p_isolation=args.p_isolation,
+        k_min=args.k_min,
+        k_max=args.k_max,
     )
 
     write_json(output_dir / "train_joint_summary.json", summary)
