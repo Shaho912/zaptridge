@@ -113,7 +113,7 @@ Optimal build time: **~72s** for 1 corpus chunk, 0.80 exact / 0.95 semantic matc
 | train_cartridge | 9.8 GB |
 | cartridge_eval | 8.7 GB |
 
-Qwen3-4B too large for iPhone 16 Pro (8 GB). Next: profile Qwen3-0.6B.
+Qwen3-4B too large for iPhone 16 Pro (8 GB). Current work uses Qwen3-8B on DGX for research; mobile profiling is a separate future task.
 
 ## Current Research Direction: Multi-Cartridge Composition (CAS)
 
