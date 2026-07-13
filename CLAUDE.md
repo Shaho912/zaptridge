@@ -115,24 +115,68 @@ Optimal build time: **~72s** for 1 corpus chunk, 0.80 exact / 0.95 semantic matc
 
 Qwen3-4B too large for iPhone 16 Pro (8 GB). Next: profile Qwen3-0.6B.
 
-## Current Task
+## Current Research Direction: Multi-Cartridge Composition (CAS)
 
-Profiling Qwen3-0.6B memory usage to assess mobile feasibility:
+Investigating whether CAS-style distractor training (Eyuboglu et al. 2025, arxiv 2606.04557) enables multiple KV cache cartridges to coexist when concatenated at inference.
+
+**Key concepts:**
+- **Oracle eval**: each cartridge loaded alone — best-case individual performance
+- **Joint eval**: all cartridges concatenated — real deployment scenario
+- **Drop = oracle − joint**: positive = interference, negative = positive transfer (joint > oracle)
+- **p_isolation**: probability of training target cartridge alone vs with distractors (CAS paper uses 0.75)
+
+### Multi-Cartridge Workflow (LongHealth, 4 patients, 1024 slots)
 
 ```bash
-python scripts/run_benchmark.py wikipedia_india \
-  --gpu 0 --device cuda:0 \
-  --base-url http://127.0.0.1:8000/v1 \
-  --api-key cartridges-local \
-  --semantic-judge \
-  --model-id Qwen/Qwen3-0.6B \
-  --profile-flops \
-  --run-name memory_profile_0.6b
+export CARTRIDGES_HF_MODEL_ID=Qwen/Qwen3-8B
+
+# 1. Prepare patient corpora
+python scripts/prepare_longhealth.py --patients 1 2 3 4
+
+# 2. Bootstrap + train Exp 1 (independent; vLLM must be running)
+python scripts/train_paper_cartridges.py \
+    --papers lh_p01:data/lh_p01/data.txt lh_p02:data/lh_p02/data.txt \
+             lh_p03:data/lh_p03/data.txt lh_p04:data/lh_p04/data.txt \
+    --output-dir outputs/exp_lh_1_1024 \
+    --base-url http://127.0.0.1:8000/v1 --api-key cartridges-local \
+    --steps 240 --cartridge-tokens 1024 \
+    --eval-questions-dir data --device cuda:0
+
+# 3. Exp 2: distractor training (reuses Exp 1 supervision, no vLLM needed)
+python scripts/train_joint_cartridges.py \
+    --corpus-order lh_p01 lh_p02 lh_p03 lh_p04 \
+    --supervision-dir outputs/exp_lh_1_1024 \
+    --output-dir outputs/exp_lh_2_1024 \
+    --steps 240 --cartridge-tokens 1024 \
+    --p-isolation 0.75 \
+    --eval-questions-dir data --device cuda:0
+
+# 4. Eval
+python scripts/eval_multi_cartridge.py \
+    --cartridge-dir outputs/exp_lh_2_1024 \
+    --names lh_p01 lh_p02 lh_p03 lh_p04 --device cuda:0 --max-new-tokens 200
 ```
 
-## Standard Run Command
+### Multi-Cartridge Findings Summary
+
+| Experiment | Oracle | Joint | Drop | Notes |
+|---|---|---|---|---|
+| LH 1024-slot Exp 1 (independent) | 9/16 | 8/16 | +1 | Baseline interference |
+| LH 1024-slot Exp 2 (distractor p=0.75) | 7/16 | 10/16 | −3 | Positive transfer |
+| Cold swap (Exp2×4 + p05 independent) | 8/20 | 11/20 | −3 | Plug-and-play works |
+| Warm swap (Exp2×4 + p05 distractor) | 8/20 | 10/20 | −2 | ≈ cold swap |
+
+**Key findings:**
+1. Distractor training (p=0.75) converts interference into positive transfer on diverse documents
+2. Domain diversity is essential — same-domain content (ML papers) makes distractor training hurt
+3. Patient names + distinct diagnoses provide the routing signal
+4. Cold swap (plug-and-play) works — no retraining needed when adding a new cartridge
+5. Warm swap ≈ cold swap — targeted distractor training of newcomer adds no measurable benefit
+
+## Standard Single-Corpus Run Command
 
 ```bash
+export CARTRIDGES_HF_MODEL_ID=Qwen/Qwen3-8B
 python scripts/run_benchmark.py wikipedia_india \
   --gpu 0 --device cuda:0 \
   --base-url http://127.0.0.1:8000/v1 \
