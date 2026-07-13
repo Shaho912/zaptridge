@@ -76,9 +76,12 @@ docs/
 Two separate model IDs to allow profiling smaller models without breaking vLLM:
 
 - `CARTRIDGES_MODEL_ID` (env var) → vLLM server model, default `Qwen/Qwen3-4B`
-- `CARTRIDGES_HF_MODEL_ID` (env var) → local HF model, set via `--model-id` CLI flag
+- `CARTRIDGES_HF_MODEL_ID` (env var) → local HF model; **must be set to `Qwen/Qwen3-8B`** for all current experiments
 
-Use `--model-id Qwen/Qwen3-0.6B` to swap only the local HF phases (training, eval) while keeping vLLM at 4B.
+Always run with:
+```bash
+export CARTRIDGES_HF_MODEL_ID=Qwen/Qwen3-8B
+```
 
 ## Optimal Hyperparameters (Found via Ablation)
 
