@@ -426,6 +426,13 @@ def train_cartridge(
             for e in avgs
         )
 
+    movement_log: list[dict] = []
+    _mvt_prev_k: list[torch.Tensor] | None = None
+    _mvt_prev_v: list[torch.Tensor] | None = None
+    if movement_log_interval is not None:
+        _mvt_prev_k = [p.detach().cpu().reshape(-1) for p in cartridge.trainable_keys]
+        _mvt_prev_v = [p.detach().cpu().reshape(-1) for p in cartridge.trainable_values]
+
     import time as _time
     _train_loop_started = _time.perf_counter()
     for step_idx in range(start_step, steps):
