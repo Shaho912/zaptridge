@@ -459,6 +459,28 @@ def train_cartridge(
             scheduler.step()
             optimizer.zero_grad(set_to_none=True)
             completed_step = step_idx + 1
+
+            if movement_log_interval is not None and completed_step % movement_log_interval == 0:
+                curr_k = [p.detach().cpu().reshape(-1) for p in cartridge.trainable_keys]
+                curr_v = [p.detach().cpu().reshape(-1) for p in cartridge.trainable_values]
+                if _mvt_prev_k is not None:
+                    key_sims = [
+                        float(F.cosine_similarity(a.unsqueeze(0), b.unsqueeze(0)).item())
+                        for a, b in zip(curr_k, _mvt_prev_k)
+                    ]
+                    val_sims = [
+                        float(F.cosine_similarity(a.unsqueeze(0), b.unsqueeze(0)).item())
+                        for a, b in zip(curr_v, _mvt_prev_v)
+                    ]
+                    movement_log.append({
+                        "step": completed_step,
+                        "mean_key_cosim": sum(key_sims) / len(key_sims),
+                        "mean_val_cosim": sum(val_sims) / len(val_sims),
+                        "per_layer_key_cosim": key_sims,
+                        "per_layer_val_cosim": val_sims,
+                    })
+                _mvt_prev_k = curr_k
+                _mvt_prev_v = curr_v
             should_validate = (
                 completed_step == steps
                 or (completed_step % validation_interval) == 0
