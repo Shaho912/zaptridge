@@ -116,8 +116,6 @@ def _generate(
 
     text = tokenizer.decode(generated, skip_special_tokens=True).strip()
     text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
-    # Strip incomplete think block (model ran out of tokens mid-thought)
-    text = re.sub(r"<think>.*$", "", text, flags=re.DOTALL).strip()
     text = re.sub(r"</think>", "", text).strip()
     return text
 
