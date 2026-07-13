@@ -565,6 +565,7 @@ def train_cartridge(
         "total_estimated_flops": flops_per_step * steps if flops_per_step else None,
         "train_loop_seconds": _train_loop_elapsed,
         "train_tops": (flops_per_step * steps / max(_train_loop_elapsed, 1e-6) / 1e12) if flops_per_step else None,
+        "movement_log": movement_log,
         "manifest_hash": stable_hash(
             {
                 "slice_id": slice_id,
