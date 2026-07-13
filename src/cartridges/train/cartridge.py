@@ -289,6 +289,7 @@ def train_cartridge(
     kvzip_prune: bool = False,
     kvzip_prune_tokens: int | None = None,
     profile_flops: bool = False,
+    movement_log_interval: int | None = None,
 ) -> dict[str, Any]:
     """Train one cartridge budget against a fixed supervision dataset.
 
