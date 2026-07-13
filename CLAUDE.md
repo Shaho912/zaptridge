@@ -97,9 +97,12 @@ Optimal build time: **~72s** for 1 corpus chunk, 0.80 exact / 0.95 semantic matc
 2. **GPU memory profiling** — `--profile-flops` flag, peak/delta memory per phase
 3. **`--model-id` flag** — swap local HF model without touching vLLM
 4. **`compress_conversation.py`** — dynamic conversation cartridge (no vLLM needed)
-5. **`DeltaKVCartridge`** — frozen base + trainable delta slots for zero-forgetting updates
+5. **`DeltaKVCartridge`** — frozen base + trainable delta slots (ultimately rejected — interference too high)
 6. **`update_cartridge.py`** — incremental update script using delta slots
 7. **KVzip+ initialization** (shelved) — on `kvzip-experiments` branch
+8. **Multi-cartridge composition pipeline** — `train_paper_cartridges.py`, `train_joint_cartridges.py`, `eval_multi_cartridge.py` for CAS-style distractor training and oracle/joint eval
+9. **LongHealth integration** — `prepare_longhealth.py` downloads kbressem/LongHealth patient records as cartridge training corpora with benchmark MCQ eval questions
+10. **`prune_supervision.py`** — EpiCache-inspired clustering + importance scoring for supervision pruning
 
 ## Memory Profiling Results (Qwen3-4B, B200 MIG45)
 
