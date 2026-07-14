@@ -381,6 +381,14 @@ def train_joint(
     if frozen_names:
         print(f"Frozen distractors: {frozen_names}")
 
+    movement_logs: dict[str, list[dict]] = {name: [] for name in train_names}
+    mvt_prev_k: dict[int, list[torch.Tensor] | None] = {}
+    mvt_prev_v: dict[int, list[torch.Tensor] | None] = {}
+    if movement_log_interval is not None:
+        for i in train_indices:
+            mvt_prev_k[i] = [p.detach().cpu().reshape(-1) for p in cartridges[i].trainable_keys]
+            mvt_prev_v[i] = [p.detach().cpu().reshape(-1) for p in cartridges[i].trainable_values]
+
     isolation_count = 0
     t0 = time.perf_counter()
     for total_step in range(total_steps):
