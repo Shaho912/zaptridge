@@ -535,6 +535,8 @@ def main() -> int:
                         help="Min number of distractors to sample on non-isolation steps.")
     parser.add_argument("--k-max", type=int, default=None,
                         help="Max distractors on non-isolation steps. Defaults to all others.")
+    parser.add_argument("--movement-log-interval", type=int, default=0,
+                        help="Log key/value cosine similarity every N steps per cartridge. 0 = disabled.")
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument(
         "--eval-questions-dir", default=None, metavar="DIR",
