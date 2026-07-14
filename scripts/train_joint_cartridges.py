@@ -606,6 +606,7 @@ def main() -> int:
         print(f"  [{name}] {len(all_examples[name])} supervision rows")
 
     # Run joint training
+    log_interval = args.movement_log_interval if args.movement_log_interval > 0 else None
     summary = train_joint(
         all_examples=all_examples,
         output_dir=output_dir,
@@ -619,6 +620,7 @@ def main() -> int:
         p_isolation=args.p_isolation,
         k_min=args.k_min,
         k_max=args.k_max,
+        movement_log_interval=log_interval,
     )
 
     write_json(output_dir / "train_joint_summary.json", summary)
