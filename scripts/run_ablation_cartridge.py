@@ -139,8 +139,8 @@ def _run_eval(
         correct = expected.lower() in answer.lower()
         hits += int(correct)
         mark = "✓" if correct else "✗"
-        print(f"  {mark} {q[:80]}")
-        print(f"       A: {answer[:120]}  [expected: {expected!r}]")
+        print(f"  {mark} Q: {q}")
+        print(f"       A: {answer[:200]}  [expected: {expected!r}]")
         details.append({"question": q, "expected": expected, "answer": answer, "correct": correct})
     return hits, len(questions), details
 
