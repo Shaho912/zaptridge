@@ -293,6 +293,7 @@ def train_joint(
     p_isolation: float = 0.75,
     k_min: int = 1,
     k_max: int | None = None,
+    movement_log_interval: int | None = None,
 ) -> dict[str, Any]:
     """Joint CAS-style training with mixed-visibility (Piso) as in the CAS paper.
 
