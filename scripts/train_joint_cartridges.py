@@ -501,6 +501,7 @@ def train_joint(
         "actual_isolation_rate": actual_iso_rate,
         "best_oracle_losses": {corpus_order[i]: best_losses[i] for i in train_indices},
         "loss_histories": loss_histories,
+        "movement_logs": movement_logs,
     }
 
 
