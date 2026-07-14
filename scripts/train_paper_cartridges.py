@@ -198,6 +198,8 @@ def main() -> int:
     parser.add_argument("--max-chars", type=int, default=40000,
                         help="Max characters of paper text (~10K tokens). Papers are truncated to this.")
     parser.add_argument("--top-logprobs", type=int, default=5)
+    parser.add_argument("--movement-log-interval", type=int, default=20,
+                        help="Log key/value cosine similarity every N steps during training. 0 = disabled.")
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--skip-bootstrap", action="store_true",
                         help="Skip vLLM bootstrap; assume supervision JSONLs already exist.")
