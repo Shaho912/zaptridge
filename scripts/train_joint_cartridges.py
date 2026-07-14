@@ -428,6 +428,24 @@ def train_joint(
         optimizers[target_idx].step()
         optimizers[target_idx].zero_grad(set_to_none=True)
 
+        if movement_log_interval is not None and (cart_step + 1) % movement_log_interval == 0:
+            curr_k = [p.detach().cpu().reshape(-1) for p in cartridges[target_idx].trainable_keys]
+            curr_v = [p.detach().cpu().reshape(-1) for p in cartridges[target_idx].trainable_values]
+            prev_k = mvt_prev_k.get(target_idx)
+            prev_v = mvt_prev_v.get(target_idx)
+            if prev_k is not None:
+                key_sims = [float(F.cosine_similarity(a.unsqueeze(0), b.unsqueeze(0)).item())
+                            for a, b in zip(curr_k, prev_k)]
+                val_sims = [float(F.cosine_similarity(a.unsqueeze(0), b.unsqueeze(0)).item())
+                            for a, b in zip(curr_v, prev_v)]
+                movement_logs[name].append({
+                    "cart_step": cart_step + 1,
+                    "mean_key_cosim": sum(key_sims) / len(key_sims),
+                    "mean_val_cosim": sum(val_sims) / len(val_sims),
+                })
+            mvt_prev_k[target_idx] = curr_k
+            mvt_prev_v[target_idx] = curr_v
+
         # Validate and checkpoint best (oracle loss)
         should_validate = (
             (cart_step + 1) == steps_per_cartridge
