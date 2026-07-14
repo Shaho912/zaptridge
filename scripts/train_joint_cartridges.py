@@ -625,6 +625,21 @@ def main() -> int:
 
     write_json(output_dir / "train_joint_summary.json", summary)
 
+    if log_interval and summary.get("movement_logs"):
+        for name, log in summary["movement_logs"].items():
+            write_json(output_dir / f"{name}_movement.json", log)
+        print("\nKey vs Value movement during distractor training:")
+        for name, log in summary["movement_logs"].items():
+            if not log:
+                continue
+            print(f"\n  [{name}]")
+            print(f"  {'Step':>6}  {'Key cosim':>10}  {'Val cosim':>10}  {'Key moves less?':>15}")
+            print(f"  {'-'*6}  {'-'*10}  {'-'*10}  {'-'*15}")
+            for entry in log:
+                k = entry["mean_key_cosim"]
+                v = entry["mean_val_cosim"]
+                print(f"  {entry['cart_step']:>6}  {k:>10.6f}  {v:>10.6f}  {'YES' if k > v else 'no':>15}")
+
     if args.eval_questions_dir:
         eq_root = Path(args.eval_questions_dir)
         for name in corpus_order:
