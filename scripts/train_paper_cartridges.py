@@ -350,6 +350,7 @@ def main() -> int:
     # ── Phase 3: Train cartridges ─────────────────────────────────────────────
     print(f"\n[3/3] Training {len(papers)} cartridges...")
     train_summaries: dict[str, dict] = {}
+    log_interval = args.movement_log_interval if args.movement_log_interval > 0 else None
 
     for name, _ in papers:
         t0 = time.perf_counter()
@@ -363,10 +364,17 @@ def main() -> int:
             learning_rate=args.learning_rate,
             steps=args.steps,
             num_frozen_tokens=1,
+            movement_log_interval=log_interval,
         )
         elapsed = time.perf_counter() - t0
         final_path = output_dir / f"{name}_cartridge.pt"
         shutil.copy2(summary["cartridge_path"], final_path)
+        if log_interval and summary.get("movement_log"):
+            movement_path = output_dir / f"{name}_movement.json"
+            movement_path.write_text(
+                json.dumps(summary["movement_log"], indent=2), encoding="utf-8"
+            )
+            print(f"  [{name}] Movement log → {movement_path.name}")
         train_summaries[name] = {**summary, "elapsed_seconds": elapsed}
         print(f"  [{name}] {elapsed:.1f}s — best_loss={summary['best_loss']:.4f}")
 
