@@ -388,6 +388,15 @@ def main() -> int:
         train_summaries[name] = {**summary, "elapsed_seconds": elapsed}
         print(f"  [{name}] {elapsed:.1f}s — best_loss={summary['best_loss']:.4f}")
 
+    _total_offline_s = total_bootstrap_s + total_train_s
+    print(f"\n{'='*60}")
+    print(f"OFFLINE PHASE TIMING  ({len(papers)} paper{'s' if len(papers) != 1 else ''})")
+    print(f"{'='*60}")
+    print(f"  Bootstrap + supervision:   {total_bootstrap_s:.0f}s")
+    print(f"  KL distillation training:  {total_train_s:.0f}s")
+    print(f"  Total offline cost:        {_total_offline_s:.0f}s  (runs once, offline)")
+    print(f"  (Cartridge load at inference: see eval_multi_cartridge.py output)")
+
     write_json(output_dir / "train_summary.json", {
         "model": DEFAULT_HF_MODEL_ID,
         "papers": [name for name, _ in papers],
