@@ -232,6 +232,9 @@ def main() -> int:
         name: output_dir / f"{name}.supervision.jsonl" for name, _ in papers
     }
 
+    total_bootstrap_s = 0.0  # accumulated across all papers
+    total_train_s = 0.0
+
     if not args.skip_bootstrap:
         # ── Phase 1: Download + extract text ─────────────────────────────────
         print("\n[1/3] Downloading and extracting paper text...")
