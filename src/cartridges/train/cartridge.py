@@ -390,6 +390,12 @@ def train_cartridge(
                 num_frozen_tokens=num_frozen_tokens,
             )
         cartridge.to(device)
+        _k0, _v0 = cartridge.layer(0)
+        _cart_mb = cartridge.canonical_kv_bytes() / 1e6
+        print(f"[cartridge init] {cartridge.num_layers} layers × {cartridge.num_tokens} slots  "
+              f"({cartridge.num_trainable_tokens} trainable + {cartridge.num_frozen_tokens} frozen)")
+        print(f"                 Layer 0 shape: keys={tuple(_k0.shape)}, values={tuple(_v0.shape)}")
+        print(f"                 KV tensor size: {_cart_mb:.2f} MB  (bfloat16, 2 bytes/element)")
         optimizer = AdamW(cartridge.parameters(), lr=learning_rate)
         scheduler = LambdaLR(optimizer, lr_lambda=lambda _: 1.0)
         start_step = 0
