@@ -338,6 +338,7 @@ def main() -> int:
                 eval_path.write_text(json.dumps(eval_questions, indent=2), encoding="utf-8")
 
             elapsed = time.perf_counter() - t0
+            total_bootstrap_s += elapsed
             print(f"  [{name}] Done in {elapsed:.1f}s — supervision: {supervision_paths[name].name}")
             print(f"  [{name}] Eval questions saved → {eval_path.name}")
             print("  Selected eval questions:")
