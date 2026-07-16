@@ -215,6 +215,11 @@ def main() -> int:
     model.eval()
     model_bytes = sum(p.numel() * p.element_size() for p in model.parameters())
     print(f"  Model weights: {model_bytes / 1e9:.2f} GB in GPU memory")
+    if torch.cuda.is_available():
+        _mem_model = torch.cuda.memory_allocated()
+        print(f"  GPU allocated after model load: {_mem_model / 1e9:.2f} GB")
+        _fp, _fp_param = next(iter(model.named_parameters()))
+        print(f"  Model params on: {_fp_param.device}  dtype: {_fp_param.dtype}")
 
     # Load cartridges
     cartridges: dict[str, TrainableKVCartridge] = {}
@@ -223,6 +228,7 @@ def main() -> int:
         path = cartridge_dir / f"{name}_cartridge.pt"
         if not path.exists():
             raise FileNotFoundError(f"Cartridge not found: {path}")
+        _mem_before = torch.cuda.memory_allocated() if torch.cuda.is_available() else 0
         _t_load = time.perf_counter()
         cart = TrainableKVCartridge.load(path, device=args.device)
         _load_ms = (time.perf_counter() - _t_load) * 1000
@@ -234,6 +240,12 @@ def main() -> int:
               f"keys={tuple(_k0.shape)}  values={tuple(_v0.shape)}")
         print(f"         KV size: {_cart_bytes / 1e6:.1f} MB  "
               f"({100 * _cart_bytes / model_bytes:.2f}% of model)  loaded in {_load_ms:.0f}ms")
+        if torch.cuda.is_available():
+            _mem_after = torch.cuda.memory_allocated()
+            _cart_param = next(iter(cart.parameters()))
+            print(f"         Lives on: {_cart_param.device}  dtype: {_cart_param.dtype}  "
+                  f"GPU delta: +{(_mem_after - _mem_before) / 1e6:.1f} MB  "
+                  f"(total allocated: {_mem_after / 1e9:.2f} GB)")
     print(f"  Total cartridge load: {total_load_ms:.0f}ms  "
           f"(online cost at session startup)")
 
