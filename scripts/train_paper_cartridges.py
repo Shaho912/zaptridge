@@ -316,6 +316,10 @@ def main() -> int:
             )
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
+            _sup = supervision_paths[name]
+            _sup_mb = _sup.stat().st_size / 1e6
+            _sup_rows = sum(1 for line in _sup.open(encoding="utf-8") if line.strip())
+            print(f"  [{name}] Supervision JSONL: {_sup_mb:.1f} MB, {_sup_rows} rows")
 
             # Save eval questions alongside cartridge for auto-loading by eval_multi_cartridge.py
             eval_path = output_dir / f"{name}_eval_questions.json"
