@@ -389,6 +389,7 @@ def train_cartridge(
                 num_tokens=cartridge_tokens,
                 num_frozen_tokens=num_frozen_tokens,
             )
+        _mem_before_cart = torch.cuda.memory_allocated() if torch.cuda.is_available() else 0
         cartridge.to(device)
         _k0, _v0 = cartridge.layer(0)
         _cart_mb = cartridge.canonical_kv_bytes() / 1e6
@@ -396,6 +397,12 @@ def train_cartridge(
               f"({cartridge.num_trainable_tokens} trainable + {cartridge.num_frozen_tokens} frozen)")
         print(f"                 Layer 0 shape: keys={tuple(_k0.shape)}, values={tuple(_v0.shape)}")
         print(f"                 KV tensor size: {_cart_mb:.2f} MB  (bfloat16, 2 bytes/element)")
+        if torch.cuda.is_available():
+            _mem_after_cart = torch.cuda.memory_allocated()
+            _cart_p = next(iter(cartridge.parameters()))
+            print(f"                 Lives on: {_cart_p.device}  dtype: {_cart_p.dtype}  "
+                  f"GPU delta: +{(_mem_after_cart - _mem_before_cart) / 1e6:.1f} MB  "
+                  f"(total allocated: {_mem_after_cart / 1e9:.2f} GB)")
         optimizer = AdamW(cartridge.parameters(), lr=learning_rate)
         scheduler = LambdaLR(optimizer, lr_lambda=lambda _: 1.0)
         start_step = 0
