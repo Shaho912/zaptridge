@@ -213,16 +213,39 @@ def main() -> int:
     )
     model.to(args.device)
     model.eval()
+    model_bytes = sum(p.numel() * p.element_size() for p in model.parameters())
+    print(f"  Model weights: {model_bytes / 1e9:.2f} GB in GPU memory")
 
     # Load cartridges
     cartridges: dict[str, TrainableKVCartridge] = {}
+    total_load_ms = 0.0
     for name in args.names:
         path = cartridge_dir / f"{name}_cartridge.pt"
         if not path.exists():
             raise FileNotFoundError(f"Cartridge not found: {path}")
+        _t_load = time.perf_counter()
         cart = TrainableKVCartridge.load(path, device=args.device)
+        _load_ms = (time.perf_counter() - _t_load) * 1000
+        total_load_ms += _load_ms
         cartridges[name] = cart
-        print(f"  [{name}] {cart.num_tokens} slots, {cart.num_layers} layers")
+        _cart_bytes = cart.canonical_kv_bytes()
+        _k0, _v0 = cart.layer(0)
+        print(f"  [{name}] {cart.num_tokens} slots × {cart.num_layers} layers  "
+              f"keys={tuple(_k0.shape)}  values={tuple(_v0.shape)}")
+        print(f"         KV size: {_cart_bytes / 1e6:.1f} MB  "
+              f"({100 * _cart_bytes / model_bytes:.2f}% of model)  loaded in {_load_ms:.0f}ms")
+    print(f"  Total cartridge load: {total_load_ms:.0f}ms  "
+          f"(online cost at session startup)")
+
+    # ── KV prefix injection at inference ──────────────────────────────────────
+    _fc = cartridges[args.names[0]]
+    _k0, _v0 = _fc.layer(0)
+    print(f"\n── KV PREFIX INJECTION AT INFERENCE ──")
+    print(f"  Cartridge slots injected as past_key_values: {_fc.num_tokens}")
+    print(f"  Layer 0 key tensor:    shape={tuple(_k0.shape)}  (batch, kv_heads, seq, d_head)")
+    print(f"  Layer 0 value tensor:  shape={tuple(_v0.shape)}")
+    print(f"  No prefill at query time — document compressed offline into these {_fc.num_tokens} KV slots.")
+    print(f"  Query tokens attend over this pre-loaded memory without re-reading any document text.")
 
     # Build per-corpus question sets (hardcoded or loaded from JSON)
     question_sets: dict[str, list[tuple[str, str]]] = {}
