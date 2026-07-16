@@ -375,8 +375,10 @@ def main() -> int:
             movement_log_interval=log_interval,
         )
         elapsed = time.perf_counter() - t0
+        total_train_s += elapsed
         final_path = output_dir / f"{name}_cartridge.pt"
         shutil.copy2(summary["cartridge_path"], final_path)
+        print(f"  [{name}] Cartridge saved: {final_path.stat().st_size / 1e6:.1f} MB on disk")
         if log_interval and summary.get("movement_log"):
             movement_path = output_dir / f"{name}_movement.json"
             movement_path.write_text(
