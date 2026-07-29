@@ -1,0 +1,43 @@
+Learned Structure in Cartridges: Keys as Shareable Routers
+
+Abstract
+
+This mechanistic study examines how Cartridges, compressed KV caches for long-context LLM inference, learn their internal representations. The authors demonstrate that Cartridge keys act as stable, shareable retrieval routers for the compressed corpora while value vectors absorb most compression work. They propose Sampled Chunk Initialization (SCI) as an improved training approach.
+
+The work is authored by Maurizio A. Diaz at MIT (Massachusetts Institute of Technology).
+
+Key Findings
+
+Training Dynamics: Key vectors remain largely unchanged during training, rotating minimally compared to value vectors, which undergo substantial transformation. This division of labor suggests keys establish effective routing while values refine compression.
+
+Singular Value Analysis: The research uses layer-wise singular value decomposition to track these changes. Value vectors show increased singular values post-training across model scales and families, indicating more efficient representation space utilization.
+
+Transferability: In ablation experiments, swapping learned key vectors between different tasks yields mild performance loss with responses remaining coherent. For Llama 3.2 3B, swapping keys caused a 4-5% performance loss. For Qwen3 models, swapping keys caused a 7% performance loss. This demonstrates keys' task-agnostic routing properties. Statistical testing confirms this overlap is significant beyond random chance, with p less than 0.05.
+
+Initialization Improvement: SCI, which stands for Sampled Chunk Initialization, randomly samples corpus chunks rather than using initial tokens. Testing shows statistically significant faster convergence compared to the original First-k Token Initialization approach, with performance improvements measured via perplexity thresholds. The SCI chunk size is 64 tokens.
+
+Memory Efficiency: Cartridges achieve up to 40 times less memory usage at inference time compared to standard KV cache approaches. This is because the cartridge compresses a long document into a fixed number of KV slots rather than storing the full attention cache.
+
+Methodology
+
+The work examines Cartridges across different model families including Llama (3.1 8B, 3.2 3B, 1B) and Qwen3 (4B, 1.7B, 0.6B). The cartridge size p is set to 2048 tokens. Batch size ranges from 64 to 128. The packed sequence length is 1024 tokens. Optimizer steps for main experiments is 3072, while ablations use 512 steps.
+
+Experiments use LongHealth medical question answering and GenConvo financial datasets. GenConvo is based on FinanceBench's AMD 10-K filing. The Arxiv benchmark uses 40k tokens and 64k Self-Study rollouts. Training employs KL divergence distillation loss during training.
+
+The work benchmarks against LongHealth, which contains over 100k token context and 200 questions.
+
+Key Vectors as Routers
+
+The central finding is that key vectors serve as routers in cartridge training. During the distillation process, value vectors undergo large rotations (typically 9-10 degrees per 50-step window measured by arccos of cosine similarity) while key vectors barely change and barely move (typically 0-2 degrees per 50-step window). Value rotations are often a full order of magnitude larger than key rotations throughout training, indicating keys act as stable routers while values compress information.
+
+This means keys inherit pre-trained directional biases from the base model that resist modification during cartridge training. The keys function as retrieval routers that direct attention to relevant value vectors, while the value vectors do the actual work of encoding compressed factual information from the corpus.
+
+Implications
+
+The findings validate theoretical constraints on prefix-tuning, suggesting key vectors inherit pre-trained directional biases that resist modification. This could inform future inference optimizations enabling hot-swapping of value vectors while maintaining fixed keys. The shareable nature of keys across different corpora means that multiple cartridges can potentially share key structures while maintaining distinct value representations.
+
+The cross-cartridge key cosine similarity is approximately 0.9996, confirming that keys converge across different corpora. An ablation using cartridge B's keys combined with cartridge A's values on cartridge A's questions showed zero accuracy drop, confirming the router hypothesis.
+
+Conclusion
+
+SCI provides statistically significant improvement over First-k Token Initialization. Keys serve as stable routers and barely move during training. Values absorb most of the compression work and undergo large rotations. Cartridges achieve up to 40x memory reduction at inference. The shareable nature of keys has implications for multi-cartridge systems and efficient deployment.
