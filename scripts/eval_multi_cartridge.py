@@ -88,7 +88,7 @@ QUESTION_SETS: dict[str, list[tuple[str, str]]] = {
         ("What do key vectors serve as in cartridge training?",                               "router"),
         ("What do key vectors barely do during training?",                                    "change"),
         ("How many times less memory does a cartridge use at inference compared to standard KV cache?", "40"),
-        ("By what percentage does swapping keys hurt Qwen3 performance?",                     "7"),
+        ("What benchmark has over 100k token context?",                                       "longhealth"),
     ],
     "fpga": [
         ("What institution published the FPGA paper?",                                        "agh university of krakow"),
@@ -96,8 +96,8 @@ QUESTION_SETS: dict[str, list[tuple[str, str]]] = {
         ("What does IWE stand for?",                                                          "image of warped events"),
         ("What is the application domain of the FPGA paper?",                                 "event-based object tracking"),
         ("What is the license of the FPGA paper?",                                            "cc by 4.0"),
-        ("What hardware platform does the FPGA implementation run on?",                       "kria"),
-        ("What dataset was used for evaluation in the FPGA paper?",                           "davis"),
+        ("How many times faster is the FPGA implementation than GPU?",                        "450"),
+        ("What is the clock frequency of the FPGA implementation in MHz?",                    "210"),
     ],
     "bio": [
         ("What two types of information does the model integrate?",                            "sequence-based and structure-based"),
@@ -105,7 +105,7 @@ QUESTION_SETS: dict[str, list[tuple[str, str]]] = {
         ("What evaluation metric does the bio paper propose?",                                 "protein-mmd"),
         ("What does MMD stand for?",                                                           "maximum mean discrepancy"),
         ("At how many levels does the model operate?",                                         "three"),
-        ("What protein language model does the bio paper use as an encoder?",                  "esm2"),
+        ("What are the two benchmark datasets used for evaluation in the bio paper?",          "enzyme commission"),
     ],
 }
 
