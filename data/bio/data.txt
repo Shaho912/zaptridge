@@ -1,0 +1,57 @@
+Demystifying Protein Generation with Hierarchical Conditional Diffusion Models
+
+Abstract
+
+This research addresses the challenge of generating novel, functional protein sequences through a multi-level conditional diffusion framework. The authors argue that existing conditional diffusion models operate at single levels of representation, potentially missing important hierarchical relationships within protein structures. Their approach generates protein information simultaneously at three levels: amino acid sequence, backbone geometry, and all-atom coordinates. By modeling these interconnected levels, the framework creates more informed representations of generated proteins. Additionally, the team introduces Protein-MMD, a new evaluation metric designed to measure how well generated proteins satisfy specified functional constraints while maintaining distributional similarity to real proteins.
+
+The paper is authored by researchers at the University of Tulsa, Johns Hopkins University, Indiana University Bloomington, and Auburn University. The corresponding author email is bo-hui at utulsa.edu.
+
+Introduction
+
+Designing proteins with specific biological functions remains a fundamental challenge in biotechnology, with applications spanning synthetic biology and drug discovery. Traditional approaches like directed evolution are labor-intensive and costly. Recent generative models offer promise for exploring the sequence-structure-function landscape, but most existing approaches are task-specific and require retraining for new objectives.
+
+The authors identify a critical gap: current diffusion models generate proteins at a single representational level, ignoring hierarchical relationships between different granularities of protein description. They motivate their work by noting that protein function emerges from multi-level structural organization. Their model incorporates rigid-body 3D rotation-invariant preprocessing and maintains SE(3)-invariance, ensuring accurate 3D structural modeling.
+
+The model integrates two types of information: sequence-based information and structure-based information. This integration of sequence-based and structure-based information is fundamental to the hierarchical approach.
+
+Methodology
+
+Multi-level Diffusion Architecture
+
+The framework operates at three complementary levels. The model operates at three levels: amino acid level, backbone level, and all-atom level.
+
+The amino acid level represents proteins as graphs where nodes correspond to residues and edges connect residues within spatial distance thresholds, capturing biochemical interactions. Features include 3D Ca atom coordinates and biochemical properties.
+
+The backbone level captures finer-grained structural information using backbone atom coordinates and Euler angles between backbone atoms, enabling orientation determination between backbone planes.
+
+The atom level provides the most detailed representation, incorporating all atoms and side chain torsion angles, allowing the model to distinguish between distinct protein structures through comprehensive geometric representation.
+
+The generative model architecture is a diffusion model, specifically a multi-level conditional generative diffusion model. The model uses a transformer decoder with 8 blocks with 8-head self-attention. The latent dimension is 384. The DiT blocks number 12 with hidden size of 768. The learning rate is 0.0001.
+
+Encoder
+
+The model uses the ESM2 protein language model as an encoder. Specifically, the encoder is the esm2_t33_650M_UR50D model from ESM2. ESM2 is a large protein language model that provides rich sequence-based representations for protein analysis.
+
+Evaluation Framework: Protein-MMD
+
+The authors propose Protein-MMD as a new evaluation metric. Protein-MMD stands for Protein Maximum Mean Discrepancy, where MMD stands for Maximum Mean Discrepancy. The metric uses Maximum Mean Discrepancy calculated on protein embeddings from the ESM2 language model. This approach captures both distributional and functional similarities between real and generated proteins while ensuring conditional consistency.
+
+The best Protein-MMD score achieved is 13.28 by their 512-length model. The best Protein-FID score achieved is 237.46. The highest RMSD achieved is 5.39.
+
+Experiments
+
+Experimental Setup
+
+Evaluation compared the proposed approach against multiple baselines: ProteoGAN (GAN-based), ESM2 and ProstT5 (language models), ProteinMPNN and LatentDiff (graph-based approaches). Assessment used both diversity metrics (TM-score, RMSD, sequence identity) and conditional consistency metrics (Protein-MMD and Protein-FID).
+
+The primary datasets used are the Enzyme Commission (EC) dataset and the Gene Ontology (GO) dataset. The EC dataset focuses on seven classes from the first EC number category. Maximum sequence lengths tested are 128, 256, and 512 amino acids.
+
+Results and Analysis
+
+On the Enzyme Commission dataset, the proposed model achieved best performance on most metrics, demonstrating superior conditional consistency and diversity. The model with 512 maximum sequence length achieved the lowest Protein-MMD and Protein-FID scores. High RMSD and low TM-scores indicated structural diversity, while low sequence identity reflected sequence variation.
+
+Ablation studies confirmed the necessity of all three levels. Removing backbone or all-atom levels degraded performance on conditional consistency metrics, validating the multi-level approach. The model operates at three levels and all three levels are necessary for best performance.
+
+Conclusion
+
+This work presents a multi-level conditional generative diffusion model integrating sequence-based and structure-based information for end-to-end protein design. The model operates at three levels of protein representation. The framework incorporates 3D rotation-invariant preprocessing to maintain SE(3)-invariance. The ESM2 protein language model serves as the encoder. The accompanying Protein-MMD metric, where MMD stands for Maximum Mean Discrepancy, addresses evaluation limitations in existing approaches, enabling more reliable assessment of conditional consistency in protein generation tasks.
