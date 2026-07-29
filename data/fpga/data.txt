@@ -1,0 +1,63 @@
+FPGA-Based Hardware Architecture for Contrast Maximization in Event-Based Vision
+
+Abstract
+
+This paper presents a hardware architecture implementing the Contrast Maximization algorithm on FPGA resources for event-based vision systems. The approach estimates motion parameters by maximizing image contrast from asynchronous event streams. The deeply pipelined FPGA design enables high-throughput, energy-efficient real-time processing. Results demonstrate motion parameter estimation executing over 200 times faster than CPU implementations and 450 times faster than GPU implementations while consuming under 1 watt of power. This represents the first hardware architecture enabling acceleration of CM algorithm computations.
+
+The paper is authored by Michal Filipkowski, Marcin Kowalczyk, and Tomasz Kryjak at AGH University of Krakow, Poland. The paper is published under the CC BY 4.0 license.
+
+Introduction
+
+Event cameras, or dynamic vision sensors, offer significant advantages over traditional frame-based cameras. They operate asynchronously with high temporal resolution, high dynamic range, and minimal motion blur. These characteristics make them suitable for rapid motion applications including autonomous vehicles and drone navigation.
+
+However, processing event camera data demands specialized algorithms. The Contrast Maximization technique estimates motion parameters but requires iterative optimization with substantial computational demands. Even powerful computers struggle to achieve real-time performance. The authors therefore developed a dedicated FPGA implementation to overcome these limitations.
+
+FPGAs provide flexibility and fine-grained parallelism, enabling fully optimized circuits for specific applications. Unlike CPUs and GPUs, FPGAs can execute complex operations simultaneously with custom-tailored architectures. The research team selected event-based object tracking to validate their approach, evaluating horizontal and vertical velocity components.
+
+Methodology
+
+Events Representation and Warping
+
+Event cameras generate sparse data points with temporal and spatial coordinates. Each event contains a timestamp, spatial position, and polarity value. The Contrast Maximization algorithm processes events in successive batches, warping them to a reference time based on motion models. Events are repositioned according to predicted displacement, aligning edges and textures maximally.
+
+Image of Warped Events (IWE)
+
+IWE stands for Image of Warped Events. After warping, events often fall between discrete pixel locations. Rather than rounding to nearest pixels, the architecture employs bilinear voting, distributing each event's contribution across four neighboring pixels proportionally based on distance. This approach significantly improves reconstruction accuracy.
+
+Objective Function
+
+The warped image produces a contrast function used as the optimization objective. The commonly used measure is pixel value variance. Sharp, well-aligned images from accurate motion parameters display higher variance. This metric guides the iterative optimization process toward optimal motion estimates.
+
+Gradient Calculation
+
+To maximize contrast effectively, gradient-based optimization uses objective function derivatives to identify fastest-increase directions. Computing gradients requires three images: the warped event image and two derivative images. These are then processed mathematically to produce gradient values.
+
+Optimization Loop
+
+Gradient ascent methodology updates motion parameters iteratively. The number of optimization iterations is 100. Each iteration recalculates warping with improved parameters, continuing until convergence. Once maximum iterations complete, region-of-interest coordinates update based on estimated motion before processing the subsequent event batch.
+
+FPGA Architecture Design
+
+The hardware implements a stream-processing pipeline with multiple specialized modules. Input events undergo preprocessing to filter by region-of-interest and calculate reference time. Events stored in block RAM then proceed through 100 optimization iterations.
+
+The warping module transforms event coordinates. Subsequently, bilinear voting distributes weighted event contributions across pixels. Twelve separate memory banks store results: four accumulate warped event images, four store velocity derivatives in the x-direction, and four store y-direction derivatives.
+
+The architecture was implemented and tested on the Kria KV260 Vision AI Starter Kit hardware platform. The clock frequency is 210 MHz.
+
+Experimental Results
+
+Processing times for a 5000 event batch demonstrated dramatic improvements. The batch size used for experiments is 5000 events. The region of interest resolution is 64 by 64 pixels, with 800 events per ROI. The FPGA implementation required 0.92 milliseconds compared to 185.96 milliseconds on a CPU and 473.51 milliseconds on a GPU. The FPGA is 200 times faster than CPU and 450 times faster than GPU.
+
+Resource utilization remained modest: LUT usage is 3.12 percent, register usage is 3.35 percent, BRAM usage is 17.70 percent, and DSP usage is 12.10 percent. Power consumption measured approximately 0.813 watts.
+
+Dataset Evaluation
+
+The system was evaluated using the DAVIS 240C datasets, which are standard benchmarks for event-based vision research. The DAVIS dataset provides synchronized event and frame data captured with the DAVIS 240C event camera sensor, enabling direct comparison of the FPGA implementation against reference implementations.
+
+Application Domain
+
+The primary application domain of this work is event-based object tracking. The system tracks objects by estimating motion parameters from event camera data in real time. This has direct applications in robotics, autonomous vehicles, drone navigation, and high-speed vision systems where traditional frame-based cameras fail due to motion blur or lighting conditions.
+
+Conclusions
+
+This work establishes the first FPGA-based acceleration of Contrast Maximization algorithm computations. The FPGA implementation running on Kria KV260 hardware achieves processing time roughly 200 times shorter than CPU implementation and 450 times shorter than GPU implementation. The 210 MHz operating frequency, minimal resource utilization at 3.12 percent LUT usage, and low power consumption of 0.813 watts validate the approach's effectiveness for real-time event-based object tracking.
