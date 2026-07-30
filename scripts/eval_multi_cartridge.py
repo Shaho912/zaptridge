@@ -82,18 +82,18 @@ QUESTION_SETS: dict[str, list[tuple[str, str]]] = {
         ("What accuracy did the parser achieve on the 10,000 message PCAP sample?", "100"),
     ],
     "ml": [
-        ("What institution published the ML paper?",                                          "mit"),
+        ("What institution published the paper proposing Sampled Chunk Initialization?",      "mit"),
         ("What does SCI stand for?",                                                          "sampled chunk initialization"),
-        ("Who is the author of the ML paper?",                                                "diaz"),
+        ("Who is the author of the paper that found key vectors barely change during cartridge training?", "diaz"),
         ("What do key vectors serve as in cartridge training?",                               "router"),
         ("What do key vectors barely do during training?",                                    "change"),
         ("How many times less memory does a cartridge use at inference compared to standard KV cache?", "40"),
     ],
     "fpga": [
-        ("What institution published the FPGA paper?",                                        "agh university of krakow"),
+        ("What institution published the paper implementing Contrast Maximization on the Kria KV260?", "agh university of krakow"),
         ("How many times faster is the FPGA implementation than CPU?",                        "200"),
         ("What does IWE stand for?",                                                          "image of warped events"),
-        ("What is the application domain of the FPGA paper?",                                 "event-based object tracking"),
+        ("The paper implementing the CM algorithm on FPGA targets what application domain?",  "event-based object tracking"),
         ("What is the license of the FPGA paper?",                                            "cc by 4.0"),
     ],
     "bio": [
