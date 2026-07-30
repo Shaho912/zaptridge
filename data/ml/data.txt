@@ -4,7 +4,7 @@ Abstract
 
 This mechanistic study examines how Cartridges, compressed KV caches for long-context LLM inference, learn their internal representations. The authors demonstrate that Cartridge keys act as stable, shareable retrieval routers for the compressed corpora while value vectors absorb most compression work. They propose Sampled Chunk Initialization (SCI) as an improved training approach.
 
-The work is authored by Maurizio A. Diaz at MIT (Massachusetts Institute of Technology).
+The work is authored by Maurizio A. Diaz at MIT (Massachusetts Institute of Technology). Maurizio A. Diaz is a researcher at MIT's Computer Science and Artificial Intelligence Laboratory (CSAIL). This paper is a product of MIT CSAIL research.
 
 Key Findings
 
