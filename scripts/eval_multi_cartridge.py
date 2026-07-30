@@ -104,8 +104,8 @@ QUESTION_SETS: dict[str, list[tuple[str, str]]] = {
         ("At how many levels does the model operate?",                                         "three"),
     ],
     "astro": [
-        ("What institution published the astro paper?",                                        "stsci"),
-        ("Who is the author of the astro paper?",                                              "osei"),
+        ("What institution published the JWST NIRISS transmission spectroscopy paper?",        "stsci"),
+        ("Who is the author of the Helion-4b CO2 detection paper?",                           "osei"),
         ("What does NIRISS stand for?",                                                        "near infrared imager and slitless spectrograph"),
         ("What molecule is detected in the exoplanet atmosphere?",                             "co2"),
         ("What observational technique does the astro paper use?",                             "transmission spectroscopy"),
