@@ -297,6 +297,8 @@ def main() -> int:
                         help="Prefix each question with '[<name> paper]' to help the model route to the right cartridge.")
     parser.add_argument("--sep-token", type=str, default=None,
                         help="Token whose KV is spliced between cartridges as a boundary marker (e.g. '<|im_end|>').")
+    parser.add_argument("--max-questions", type=int, default=None,
+                        help="Use only the first N questions per corpus.")
     args = parser.parse_args()
 
     cartridge_dir = Path(args.cartridge_dir)
