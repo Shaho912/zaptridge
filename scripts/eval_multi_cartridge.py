@@ -321,6 +321,7 @@ def main() -> int:
                 cache_factory=cache_factory,
                 device=args.device,
                 max_new_tokens=args.max_new_tokens,
+                domain_tag=args.domain_tags,
             )
             oracle_scores[name] = (hits, total)
             print(f"  → {hits}/{total}")
