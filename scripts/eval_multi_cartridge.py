@@ -231,6 +231,8 @@ def main() -> int:
     parser.add_argument("--mode", choices=["oracle", "joint", "both"], default="both")
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--max-new-tokens", type=int, default=80)
+    parser.add_argument("--domain-tags", action="store_true",
+                        help="Prefix each question with '[<name> paper]' to help the model route to the right cartridge.")
     args = parser.parse_args()
 
     cartridge_dir = Path(args.cartridge_dir)
