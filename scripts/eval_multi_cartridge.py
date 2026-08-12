@@ -115,9 +115,29 @@ QUESTION_SETS: dict[str, list[tuple[str, str]]] = {
 ALL_NAMES = ["zaptridge_convo", "fpga_convo"]
 
 
+def _get_sep_kv(
+    model,
+    tokenizer,
+    device: str,
+    sep_token: str,
+) -> list[tuple[torch.Tensor, torch.Tensor]]:
+    """Forward-pass a separator token and return its per-layer (K, V) tensors.
+
+    Each returned tensor has shape (1, kv_heads, 1, d_head) — a single-slot
+    boundary marker that can be spliced between cartridges in the combined cache.
+    """
+    input_ids = tokenizer(sep_token, return_tensors="pt", add_special_tokens=False)["input_ids"].to(device)
+    with torch.inference_mode():
+        out = model(input_ids=input_ids, use_cache=True)
+    pkv = out.past_key_values
+    num_layers = model.config.num_hidden_layers
+    return [(pkv.key_cache[i], pkv.value_cache[i]) for i in range(num_layers)]
+
+
 def _make_combined_cache(
     cartridges: list[TrainableKVCartridge],
     model_config,
+    sep_kv: list[tuple[torch.Tensor, torch.Tensor]] | None = None,
 ) -> DynamicCache:
     """Concatenate multiple cartridges along the sequence dimension into one cache.
 
@@ -125,12 +145,18 @@ def _make_combined_cache(
     combined sequence length equals the sum of all individual cartridge lengths.
     Keys retain their original RoPE positions — the model must learn to disambiguate
     overlapping position embeddings across cartridges (which joint training addresses).
+
+    If sep_kv is provided, a single-slot separator token KV is spliced between
+    each pair of cartridges as a structural boundary marker.
     """
     num_layers = cartridges[0].num_layers
     combined_pkv = []
     for layer_idx in range(num_layers):
         keys, values = [], []
-        for cart in cartridges:
+        for i, cart in enumerate(cartridges):
+            if i > 0 and sep_kv is not None:
+                keys.append(sep_kv[layer_idx][0])
+                values.append(sep_kv[layer_idx][1])
             k, v = cart.layer(layer_idx)
             keys.append(k)
             values.append(v)
