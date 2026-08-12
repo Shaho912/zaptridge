@@ -362,12 +362,18 @@ def main() -> int:
     if args.mode in ("joint", "both"):
         all_carts = [cartridges[n] for n in args.names]
         total_slots = sum(c.num_tokens for c in all_carts)
+        sep_kv = None
+        if args.sep_token:
+            print(f"\nComputing separator KV for token: {args.sep_token!r}")
+            sep_kv = _get_sep_kv(model, tokenizer, args.device, args.sep_token)
+            total_slots += len(all_carts) - 1  # one sep slot between each pair
         print("\n" + "=" * 70)
         print(f"JOINT EVAL  ({len(args.names)} cartridges concatenated, {total_slots} total slots)")
-        print(f"Order: {' | '.join(f'{n}({cartridges[n].num_tokens})' for n in args.names)}")
+        sep_label = f" + '{args.sep_token}' separators" if args.sep_token else ""
+        print(f"Order: {' | '.join(f'{n}({cartridges[n].num_tokens})' for n in args.names)}{sep_label}")
         print("=" * 70)
 
-        joint_cache_factory = lambda: _make_combined_cache(all_carts, model.config)
+        joint_cache_factory = lambda: _make_combined_cache(all_carts, model.config, sep_kv=sep_kv)
         for name in eval_names:
             print(f"\n── {name.upper()} ──")
             hits, total = _eval_corpus(
