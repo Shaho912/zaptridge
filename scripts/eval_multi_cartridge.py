@@ -121,20 +121,53 @@ def _get_sep_kv(
     device: str,
     sep_token: str,
 ) -> list[tuple[torch.Tensor, torch.Tensor]]:
-    """Forward-pass a separator token and return its per-layer (K, V) tensors.
+    """Return per-layer (K, V) tensors for a separator token.
 
-    Each returned tensor has shape (1, kv_heads, 1, d_head) — a single-slot
-    boundary marker that can be spliced between cartridges in the combined cache.
+    Tries to capture real token KV via attention-layer hooks. Falls back to
+    zero tensors if the hook can't find a (k, v) pair — still a valid boundary
+    marker for testing whether any slot at the boundary reduces interference.
     """
-    input_ids = tokenizer(sep_token, return_tensors="pt", add_special_tokens=False)["input_ids"].to(device)
-    with torch.inference_mode():
-        out = model(input_ids=input_ids, use_cache=True)
-    pkv = out.past_key_values
     num_layers = model.config.num_hidden_layers
-    if hasattr(pkv, "key_cache"):
-        return [(pkv.key_cache[i], pkv.value_cache[i]) for i in range(num_layers)]
-    legacy = pkv.to_legacy_cache() if hasattr(pkv, "to_legacy_cache") else pkv
-    return [(legacy[i][0], legacy[i][1]) for i in range(num_layers)]
+    kv_heads   = model.config.num_key_value_heads
+    d_head     = model.config.hidden_size // model.config.num_attention_heads
+    dtype      = next(model.parameters()).dtype
+
+    captured: list[tuple[torch.Tensor, torch.Tensor] | None] = [None] * num_layers
+
+    def _make_hook(idx: int):
+        def hook(module, inp, out):
+            # Qwen3 self_attn returns (attn_out, attn_weights, past_kv)
+            # past_kv is (k, v) each (batch, kv_heads, seq, d_head)
+            if isinstance(out, tuple):
+                for item in out:
+                    if (isinstance(item, tuple) and len(item) == 2
+                            and isinstance(item[0], torch.Tensor)
+                            and item[0].ndim == 4
+                            and item[0].shape[-1] == d_head):
+                        captured[idx] = (item[0].detach(), item[1].detach())
+                        return
+        return hook
+
+    hooks = [layer.self_attn.register_forward_hook(_make_hook(i))
+             for i, layer in enumerate(model.model.layers)]
+    try:
+        input_ids = tokenizer(sep_token, return_tensors="pt",
+                              add_special_tokens=False)["input_ids"].to(device)
+        with torch.inference_mode():
+            model(input_ids=input_ids, use_cache=True)
+    finally:
+        for h in hooks:
+            h.remove()
+
+    if all(kv is not None for kv in captured):
+        print(f"  [sep] Captured real '{sep_token}' KV  shape: {captured[0][0].shape}")
+        return captured  # type: ignore[return-value]
+
+    print(f"  [sep] Hook capture failed — using zero boundary tensors  "
+          f"shape: (1, {kv_heads}, 1, {d_head})")
+    z_k = torch.zeros(1, kv_heads, 1, d_head, device=device, dtype=dtype)
+    z_v = torch.zeros(1, kv_heads, 1, d_head, device=device, dtype=dtype)
+    return [(z_k.clone(), z_v.clone()) for _ in range(num_layers)]
 
 
 def _make_combined_cache(
