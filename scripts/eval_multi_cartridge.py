@@ -202,12 +202,14 @@ def _eval_corpus(
     cache_factory,
     device: str,
     max_new_tokens: int,
+    domain_tag: bool = False,
 ) -> tuple[int, int]:
     """Run all questions for one corpus. Returns (hits, total)."""
     hits = 0
     for question, expected in questions:
+        tagged = f"[{corpus_name} paper] {question}" if domain_tag else question
         answer, elapsed = _generate(
-            model, tokenizer, cache_factory, question, device, max_new_tokens
+            model, tokenizer, cache_factory, tagged, device, max_new_tokens
         )
         correct = expected.lower() in answer.lower()
         hits += int(correct)
