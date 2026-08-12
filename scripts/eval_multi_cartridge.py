@@ -131,7 +131,10 @@ def _get_sep_kv(
         out = model(input_ids=input_ids, use_cache=True)
     pkv = out.past_key_values
     num_layers = model.config.num_hidden_layers
-    return [(pkv.key_cache[i], pkv.value_cache[i]) for i in range(num_layers)]
+    if hasattr(pkv, "key_cache"):
+        return [(pkv.key_cache[i], pkv.value_cache[i]) for i in range(num_layers)]
+    legacy = pkv.to_legacy_cache() if hasattr(pkv, "to_legacy_cache") else pkv
+    return [(legacy[i][0], legacy[i][1]) for i in range(num_layers)]
 
 
 def _make_combined_cache(
