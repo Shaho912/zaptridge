@@ -350,6 +350,7 @@ def main() -> int:
                 cache_factory=joint_cache_factory,
                 device=args.device,
                 max_new_tokens=args.max_new_tokens,
+                domain_tag=args.domain_tags,
             )
             joint_scores[name] = (hits, total)
             print(f"  → {hits}/{total}")
