@@ -363,6 +363,8 @@ def main() -> int:
     for name in args.names:
         qs = _load_question_set(name, cartridge_dir)
         if qs:
+            if args.max_questions:
+                qs = qs[:args.max_questions]
             question_sets[name] = qs
         else:
             print(f"  [{name}] Warning: no eval questions found — skipping in eval.")
