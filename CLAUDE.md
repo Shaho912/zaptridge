@@ -161,17 +161,22 @@ python scripts/eval_multi_cartridge.py \
 
 | Experiment | Oracle | Joint | Drop | Notes |
 |---|---|---|---|---|
-| LH 1024-slot Exp 1 (independent) | 9/16 | 8/16 | +1 | Baseline interference |
-| LH 1024-slot Exp 2 (distractor p=0.75) | 7/16 | 10/16 | −3 | Positive transfer |
+| LH Exp 1 (independent) — original | 9/16 | 8/16 | +1 | Baseline interference |
+| LH Exp 2 (CAS p=0.75) — original | 7/16 | 10/16 | −3 | Positive transfer |
+| LH Exp 1 (independent) — replication | 7/16 | 6/16 | +1 | Reproduced sign |
+| LH Exp 2 (CAS p=0.75) — replication | 8/16 | 10/16 | −2 | Same joint accuracy |
 | Cold swap (Exp2×4 + p05 independent) | 8/20 | 11/20 | −3 | Plug-and-play works |
 | Warm swap (Exp2×4 + p05 distractor) | 8/20 | 10/20 | −2 | ≈ cold swap |
+| 5-patient Exp 1 (independent) | 6/20 | 9/20 | −3 | lh_p05 anomaly inflates |
+| 5-patient Exp 2 (CAS p=0.75) | 8/20 | 10/20 | −2 | Positive transfer holds |
 
 **Key findings:**
 1. Distractor training (p=0.75) converts interference into positive transfer on diverse documents
-2. Domain diversity is essential — same-domain content (ML papers) makes distractor training hurt
-3. Patient names + distinct diagnoses provide the routing signal
+2. Two necessary conditions: **fresh bootstrap** (same run as Exp 1) + **240 training steps**; reusing supervision from a different run or cutting to 120 steps breaks CAS entirely
+3. Domain diversity is essential — same-domain content (ML papers) makes distractor training hurt; patient names + distinct diagnoses provide the routing signal
 4. Cold swap (plug-and-play) works — no retraining needed when adding a new cartridge
 5. Warm swap ≈ cold swap — targeted distractor training of newcomer adds no measurable benefit
+6. CAS is sensitive to bootstrap quality: patient-specific Q&As give strong routing signal; generic Q&As do not
 
 ## Standard Single-Corpus Run Command
 
