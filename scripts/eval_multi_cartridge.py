@@ -213,12 +213,19 @@ def _generate(
 ) -> tuple[str, float]:
     """Generate a single answer, returning (text, elapsed_seconds)."""
     messages = [{"role": "user", "content": f"/no_think\n{question}"}]
-    prompt = tokenizer.apply_chat_template(
-        messages,
-        tokenize=False,
-        add_generation_prompt=True,
-        chat_template_kwargs={"enable_thinking": False},
-    )
+    try:
+        prompt = tokenizer.apply_chat_template(
+            messages,
+            tokenize=False,
+            add_generation_prompt=True,
+            enable_thinking=False,
+        )
+    except TypeError:
+        prompt = tokenizer.apply_chat_template(
+            messages,
+            tokenize=False,
+            add_generation_prompt=True,
+        )
     input_ids = tokenizer(prompt, return_tensors="pt", add_special_tokens=False)["input_ids"].to(device)
     cache = cache_factory()
 
