@@ -257,6 +257,7 @@ def _generate(
 
     text = tokenizer.decode(generated_ids, skip_special_tokens=True).strip()
     text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
+    text = re.sub(r"<think>.*", "", text, flags=re.DOTALL).strip()  # truncated think block
     text = re.sub(r"</think>", "", text).strip()
     text = re.sub(r"^(Okay[,.].*?\n\n)", "", text, flags=re.DOTALL).strip()
     return text, elapsed
