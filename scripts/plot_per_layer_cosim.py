@@ -50,42 +50,36 @@ fig, ax = plt.subplots(figsize=(10, 5))
 fig.patch.set_facecolor("white")
 ax.set_facecolor("white")
 
-# ── early-layer shaded zone ───────────────────────────────────────────────────
+# ── shaded zones ─────────────────────────────────────────────────────────────
 ax.axvspan(-0.5, 10.5, color=C_VALS, alpha=0.06, zorder=0)
-ax.text(5, 0.375, "early-layer\nreorganization\n(layers 0–10)",
-        ha="center", va="bottom", fontsize=8, color=C_VALS, alpha=0.75,
-        linespacing=1.5)
-
-# ── convergence zone ──────────────────────────────────────────────────────────
 ax.axvspan(26.5, 35.5, color=LGRAY, alpha=0.45, zorder=0)
-ax.text(31, 0.96, "converged\n(layers 27+)",
-        ha="center", va="top", fontsize=8, color=GRAY, alpha=0.85,
-        linespacing=1.5)
 
 # ── gridlines ─────────────────────────────────────────────────────────────────
 for y in [0.5, 0.6, 0.7, 0.8, 0.9, 1.0]:
     ax.axhline(y, color=LGRAY, linewidth=0.7, zorder=1)
 
 # ── key cosim line ────────────────────────────────────────────────────────────
-ax.plot(layers, key_cosim, color=C_KEYS, linewidth=2, label="Keys", zorder=3)
-# annotate key line
-ax.text(35.3, key_cosim[-1], "Keys  ~1.000", color=C_KEYS,
-        va="center", fontsize=8.5, fontweight="500")
+ax.plot(layers, key_cosim, color=C_KEYS, linewidth=2, zorder=3)
 
 # ── value cosim line ──────────────────────────────────────────────────────────
-ax.plot(layers, val_cosim, color=C_VALS, linewidth=2, label="Values", zorder=3)
-# dots at layer 0 and convergence
+ax.plot(layers, val_cosim, color=C_VALS, linewidth=2, zorder=3)
 ax.scatter([0], [val_cosim[0]], color=C_VALS, s=48, zorder=4)
-ax.scatter([27], [val_cosim[27]], color=C_VALS, s=28, zorder=4, alpha=0.6)
 
-# ── layer 0 annotation ───────────────────────────────────────────────────────
+# ── annotations: top of chart, no overlap ────────────────────────────────────
+# zone labels along the top axis
+ax.text(5, 1.020, "early layers (0–10)", ha="center", va="bottom",
+        fontsize=8, color=C_VALS, alpha=0.8)
+ax.text(31, 1.020, "converged (27+)", ha="center", va="bottom",
+        fontsize=8, color=GRAY, alpha=0.8)
+
+# layer 0 value: annotate below and to the right, clear of the dot
 ax.annotate(
-    f"Layer 0: {val_cosim[0]:.3f}",
+    f"0.416",
     xy=(0, val_cosim[0]),
-    xytext=(4.5, 0.44),
+    xytext=(2.5, 0.395),
     fontsize=8.5,
     color=C_VALS,
-    arrowprops=dict(arrowstyle="-", color=C_VALS, lw=0.9, alpha=0.6),
+    arrowprops=dict(arrowstyle="-", color=C_VALS, lw=0.8, alpha=0.5),
 )
 
 # ── axes ──────────────────────────────────────────────────────────────────────
