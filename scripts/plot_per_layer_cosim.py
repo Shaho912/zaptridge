@@ -84,7 +84,7 @@ ax.annotate(
 
 # ── axes ──────────────────────────────────────────────────────────────────────
 ax.set_xlim(-0.8, 37)
-ax.set_ylim(0.35, 1.025)
+ax.set_ylim(0.35, 1.038)
 ax.set_xlabel("Layer", fontsize=10, color=GRAY)
 ax.set_ylabel("Cosine similarity", fontsize=10, color=GRAY)
 ax.set_xticks([0, 5, 10, 15, 20, 25, 30, 35])
