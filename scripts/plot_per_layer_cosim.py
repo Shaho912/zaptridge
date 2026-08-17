@@ -50,37 +50,17 @@ fig, ax = plt.subplots(figsize=(10, 5))
 fig.patch.set_facecolor("white")
 ax.set_facecolor("white")
 
-# ── shaded zones ─────────────────────────────────────────────────────────────
-ax.axvspan(-0.5, 10.5, color=C_VALS, alpha=0.06, zorder=0)
-ax.axvspan(26.5, 35.5, color=LGRAY, alpha=0.45, zorder=0)
-
-# ── gridlines ─────────────────────────────────────────────────────────────────
+# ── gridlines ────────────────────────────────────────────────────────────────
 for y in [0.5, 0.6, 0.7, 0.8, 0.9, 1.0]:
     ax.axhline(y, color=LGRAY, linewidth=0.7, zorder=1)
 
-# ── key cosim line ────────────────────────────────────────────────────────────
-ax.plot(layers, key_cosim, color=C_KEYS, linewidth=2, zorder=3)
+# ── lines (layers 0–20 only) ─────────────────────────────────────────────────
+layers_clip  = layers[:21]
+key_clip     = key_cosim[:21]
+val_clip     = val_cosim[:21]
 
-# ── value cosim line ──────────────────────────────────────────────────────────
-ax.plot(layers, val_cosim, color=C_VALS, linewidth=2, zorder=3)
-ax.scatter([0], [val_cosim[0]], color=C_VALS, s=48, zorder=4)
-
-# ── annotations: top of chart, no overlap ────────────────────────────────────
-# zone labels along the top axis
-ax.text(5, 1.020, "early layers (0–10)", ha="center", va="bottom",
-        fontsize=8, color=C_VALS, alpha=0.8)
-ax.text(31, 1.020, "converged (27+)", ha="center", va="bottom",
-        fontsize=8, color=GRAY, alpha=0.8)
-
-# layer 0 value: annotate below and to the right, clear of the dot
-ax.annotate(
-    f"0.416",
-    xy=(0, val_cosim[0]),
-    xytext=(2.5, 0.395),
-    fontsize=8.5,
-    color=C_VALS,
-    arrowprops=dict(arrowstyle="-", color=C_VALS, lw=0.8, alpha=0.5),
-)
+ax.plot(layers_clip, key_clip, color=C_KEYS, linewidth=2, zorder=3)
+ax.plot(layers_clip, val_clip, color=C_VALS, linewidth=2, zorder=3)
 
 # ── axes ──────────────────────────────────────────────────────────────────────
 ax.set_xlim(-0.8, 37)
