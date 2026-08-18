@@ -146,7 +146,7 @@ ax.annotate("Ind & CAS\noverlap",
 
 # Values: ind and CAS cross-patient are nearly identical
 ax.annotate("Ind & CAS\noverlap",
-            xy=(2, val_cp_ind_c[2]), xytext=(4.0, 0.24),
+            xy=(2, val_cp_ind_c[2]), xytext=(1.5, 0.24),
             fontsize=7.5, color=C_VAL, ha="center",
             arrowprops=dict(arrowstyle="-|>", color=C_VAL, lw=0.9))
 
