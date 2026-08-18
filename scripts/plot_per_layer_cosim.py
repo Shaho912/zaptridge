@@ -23,7 +23,7 @@ C_VAL = "#eb6834"
 GRAY  = "#6b7280"
 LGRAY = "#e5e7eb"
 
-MAX_LAYER = 20
+MAX_LAYER = 10
 
 # ── cross-condition: p01 independent vs p01 CAS (all 36 layers) ──────────────
 layers_cc = list(range(36))
