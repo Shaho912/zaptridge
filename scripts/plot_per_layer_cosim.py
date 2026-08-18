@@ -138,15 +138,15 @@ ax.legend(handles=[l1, l2, l3, l4, l5, l6], fontsize=8.5, loc="lower right",
           framealpha=0.9, edgecolor=LGRAY)
 
 # ── overlap annotations ───────────────────────────────────────────────────────
-# Keys: ind and CAS cross-patient are nearly identical (~0.965 at layer 0)
+# Keys: ind and CAS cross-patient are nearly identical — point to upper-left where lines start
 ax.annotate("Ind & CAS\noverlap",
-            xy=(3, key_cp_ind_c[3]), xytext=(5.5, 0.77),
+            xy=(1, key_cp_ind_c[1]), xytext=(3.0, 0.84),
             fontsize=7.5, color=C_KEY, ha="center",
             arrowprops=dict(arrowstyle="-|>", color=C_KEY, lw=0.9))
 
-# Values: ind and CAS cross-patient are nearly identical (~0.08–0.09)
+# Values: ind and CAS cross-patient are nearly identical
 ax.annotate("Ind & CAS\noverlap",
-            xy=(3, val_cp_ind_c[3]), xytext=(5.5, 0.32),
+            xy=(2, val_cp_ind_c[2]), xytext=(4.0, 0.24),
             fontsize=7.5, color=C_VAL, ha="center",
             arrowprops=dict(arrowstyle="-|>", color=C_VAL, lw=0.9))
 
