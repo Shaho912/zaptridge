@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""Per-layer cosine similarity — 4 lines:
-  - Cross-patient keys   (p01 vs p02, same training)
-  - Cross-condition keys (p01 independent vs p01 CAS)
-  - Cross-patient values (p01 vs p02, same training)
-  - Cross-condition values (p01 independent vs p01 CAS)
+"""Per-layer cosine similarity — 6 lines:
+  - Cross-condition keys/values  (p01 ind vs p01 CAS, same patient)
+  - Cross-patient ind keys/values (p01 ind vs p02 ind)
+  - Cross-patient CAS keys/values (p01 CAS vs p02 CAS)
 
 Usage:
     python scripts/plot_per_layer_cosim.py
