@@ -82,11 +82,9 @@ for y in [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]:
 ax.plot(layers_cc_c, key_cc_c, color=C_KEY, linewidth=2, linestyle="-",  zorder=3)
 ax.plot(layers_cc_c, val_cc_c, color=C_VAL, linewidth=2, linestyle="-",  zorder=3)
 
-# cross-patient — dashed lines with markers (sparse)
-ax.plot(layers_cp_c, key_cp_c, color=C_KEY, linewidth=2, linestyle="--",
-        marker="o", markersize=6, zorder=4)
-ax.plot(layers_cp_c, val_cp_c, color=C_VAL, linewidth=2, linestyle="--",
-        marker="o", markersize=6, zorder=4)
+# cross-patient — dashed lines (dense, no markers)
+ax.plot(layers_cp_c, key_cp_c, color=C_KEY, linewidth=2, linestyle="--", zorder=4)
+ax.plot(layers_cp_c, val_cp_c, color=C_VAL, linewidth=2, linestyle="--", zorder=4)
 
 # ── axes ──────────────────────────────────────────────────────────────────────
 ax.set_xlim(-0.5, MAX_LAYER + 0.5)
