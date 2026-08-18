@@ -137,6 +137,19 @@ l6 = mlines.Line2D([], [], color=C_VAL, linewidth=2, linestyle=":",
 ax.legend(handles=[l1, l2, l3, l4, l5, l6], fontsize=8.5, loc="lower right",
           framealpha=0.9, edgecolor=LGRAY)
 
+# ── overlap annotations ───────────────────────────────────────────────────────
+# Keys: ind and CAS cross-patient are nearly identical (~0.965 at layer 0)
+ax.annotate("Ind & CAS\noverlap",
+            xy=(3, key_cp_ind_c[3]), xytext=(5.5, 0.77),
+            fontsize=7.5, color=C_KEY, ha="center",
+            arrowprops=dict(arrowstyle="-|>", color=C_KEY, lw=0.9))
+
+# Values: ind and CAS cross-patient are nearly identical (~0.08–0.09)
+ax.annotate("Ind & CAS\noverlap",
+            xy=(3, val_cp_ind_c[3]), xytext=(5.5, 0.32),
+            fontsize=7.5, color=C_VAL, ha="center",
+            arrowprops=dict(arrowstyle="-|>", color=C_VAL, lw=0.9))
+
 ax.set_title(
     "Per-Layer Cosine Similarity: Cross-Patient vs Cross-Condition\n"
     "Qwen3-8B · 1024 slots · LongHealth",
