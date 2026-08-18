@@ -104,7 +104,7 @@ ax.spines["bottom"].set_color(LGRAY)
 l1 = mlines.Line2D([], [], color=C_KEY, linewidth=2, linestyle="-",
                    label="Keys — same patient, Ind vs CAS")
 l2 = mlines.Line2D([], [], color=C_KEY, linewidth=2, linestyle="--",
-                   marker="o", markersize=5, label="Keys — p01 vs p02 (cross-patient)")
+                   label="Keys — p01 vs p02 (cross-patient)")
 l3 = mlines.Line2D([], [], color=C_VAL, linewidth=2, linestyle="-",
                    label="Values — same patient, Ind vs CAS")
 l4 = mlines.Line2D([], [], color=C_VAL, linewidth=2, linestyle="--",
