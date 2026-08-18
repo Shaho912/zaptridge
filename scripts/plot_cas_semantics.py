@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """CAS semantic diversity — single vertical grouped bar chart.
 
+Drop metric: (Exp1 oracle − joint) / total × 100 for both bars,
+so both Exp1 and Exp2 are measured against the same baseline.
+
 Usage:
     python scripts/plot_cas_semantics.py
 """
@@ -21,14 +24,18 @@ GRAY  = "#6b7280"
 LGRAY = "#e5e7eb"
 
 # ── data ─────────────────────────────────────────────────────────────────────
-# (x_label, exp1_pct_drop, exp2_pct_drop or None, anomaly_exp1)
+# (label, exp1_oracle, exp1_joint, exp2_joint or None, total, anomaly)
+# drop = (exp1_oracle - joint) / total * 100  (same baseline for both bars)
 CONDITIONS = [
-    ("Research papers\n3-domain 8B\n(ML/FPGA/Bio)",        +18.8, +18.8, False),
-    ("Research papers\n4-domain 8B\n(ML/FPGA/Bio/Astro)",  +14.3,  +9.5, False),
-    ("Patient records\n4 patients\n(LongHealth avg)",        +6.3, -15.6, False),
-    ("Patient records\n5 patients †\n(LongHealth)",         -15.0, -10.0, True),
-    ("Distinct\nquery types\n(Setup 2)",                      0.0,   None, False),
+    ("4 ML papers\n(same domain)",         42, 36, 35, 45, False),
+    ("4-domain\n(ML/FPGA/Bio/Astro)",      20, 17, 18, 21, False),
+    ("Patient records\n4 patients (LH)",    8,  7, 10, 16, False),
+    ("Patient records\n5 patients † (LH)",  6,  9, 10, 20, True),
+    ("Distinct\nquery types (Setup 2)",    18, 18, None, 18, False),
 ]
+
+def drop_pct(oracle, joint, total):
+    return (oracle - joint) / total * 100
 
 # ── figure ────────────────────────────────────────────────────────────────────
 fig, ax = plt.subplots(figsize=(11, 6))
@@ -37,54 +44,45 @@ ax.set_facecolor("white")
 
 n = len(CONDITIONS)
 x = np.arange(n)
-bw   = 0.30
-gap  = 0.06
+bw  = 0.30
+gap = 0.06
 
-# interference / positive transfer background
 ax.axhspan(0, 22, color=C2, alpha=0.05, zorder=0)
 ax.axhspan(-22, 0, color=C1, alpha=0.05, zorder=0)
 
-# gridlines
 for y in [-20, -15, -10, -5, 5, 10, 15, 20]:
     ax.axhline(y, color=LGRAY, linewidth=0.7, zorder=1)
 ax.axhline(0, color="#9ca3af", linewidth=1.4, zorder=2)
 
-# zone labels
-ax.text(n - 0.5, 21, "Interference →", ha="right", va="bottom",
-        fontsize=8.5, color=C2, alpha=0.8)
-ax.text(n - 0.5, -21, "← Positive transfer", ha="right", va="top",
-        fontsize=8.5, color=C1, alpha=0.8)
+ax.text(n - 0.5, 21,  "Interference →",     ha="right", va="bottom", fontsize=8.5, color=C2, alpha=0.8)
+ax.text(n - 0.5, -21, "← Positive transfer", ha="right", va="top",    fontsize=8.5, color=C1, alpha=0.8)
 
-# bars
-for i, (lbl, d1, d2, anom) in enumerate(CONDITIONS):
+for i, (lbl, e1_ora, e1_jnt, e2_jnt, total, anom) in enumerate(CONDITIONS):
     a1 = 0.4 if anom else 1.0
+    d1 = drop_pct(e1_ora, e1_jnt, total)
 
-    if d2 is not None:
-        # two bars
+    if e2_jnt is not None:
+        d2 = drop_pct(e1_ora, e2_jnt, total)
         ax.bar(x[i] - bw/2 - gap/2, d1, width=bw, color=C1, alpha=a1, zorder=3)
         ax.bar(x[i] + bw/2 + gap/2, d2, width=bw, color=C2, zorder=3)
-        # value labels
         for val, xoff, alpha in [(d1, -bw/2 - gap/2, a1), (d2, bw/2 + gap/2, 1.0)]:
             sign = "+" if val >= 0 else ""
-            yoff = 0.6 if val >= 0 else -0.6
+            yoff = 0.7 if val >= 0 else -0.7
             va   = "bottom" if val >= 0 else "top"
             ax.text(x[i] + xoff, val + yoff, f"{sign}{val:.1f}%",
                     ha="center", va=va, fontsize=7.5, color=GRAY, alpha=alpha)
     else:
-        # single bar (Exp1 only, zero drop)
         ax.bar(x[i], d1, width=bw, color=C1, alpha=a1, zorder=3)
-        ax.text(x[i], 1.2, "0%", ha="center", va="bottom",
-                fontsize=7.5, color=GRAY)
+        ax.text(x[i], 1.2, "0%", ha="center", va="bottom", fontsize=7.5, color=GRAY)
         ax.text(x[i], -1.5, "no Exp 2\n(zero interference\nwithout CAS)",
-                ha="center", va="top", fontsize=7, color=GRAY, style="italic",
-                linespacing=1.4)
+                ha="center", va="top", fontsize=7, color=GRAY, style="italic", linespacing=1.4)
 
 # separator between research papers and patient records
 ax.axvline(1.5, color=LGRAY, linewidth=0.8, linestyle="--")
 
 ax.set_xticks(x)
 ax.set_xticklabels([c[0] for c in CONDITIONS], fontsize=9, linespacing=1.4)
-ax.set_ylabel("% drop  =  (oracle − joint) / n × 100", fontsize=9.5, color=GRAY)
+ax.set_ylabel("% drop  =  (Exp1 oracle − joint) / n × 100", fontsize=9.5, color=GRAY)
 ax.set_ylim(-22, 24)
 ax.yaxis.set_tick_params(labelsize=9, colors=GRAY)
 ax.tick_params(bottom=False)
@@ -105,7 +103,7 @@ ax.set_title(
 
 fig.text(0.01, -0.02,
          "† 5-patient Exp 1 bar dimmed: lh_p05 anomaly inflates joint accuracy.  "
-         "4-domain Exp 2 shows Run A (best case); Run B: drop +4.",
+         "4-domain Exp 2 shows Run A only.  4 ML papers Exp 2: 100% distractor.",
          fontsize=7.5, color=GRAY)
 
 plt.tight_layout()
