@@ -54,8 +54,8 @@ for y in [-20, -15, -10, -5, 5, 10, 15, 20]:
     ax.axhline(y, color=LGRAY, linewidth=0.7, zorder=1)
 ax.axhline(0, color="#9ca3af", linewidth=1.4, zorder=2)
 
-ax.text(-0.4, 21,  "Interference →",      ha="left", va="bottom", fontsize=8.5, color=C2, alpha=0.8)
-ax.text(-0.4, -21, "← Positive transfer", ha="left", va="top",    fontsize=8.5, color=C1, alpha=0.8)
+ax.text(-0.4, 21,  "Interference",      ha="left", va="bottom", fontsize=8.5, color=C2, alpha=0.8)
+ax.text(-0.4, -21, "Positive transfer", ha="left", va="top",    fontsize=8.5, color=C1, alpha=0.8)
 
 for i, (lbl, e1_ora, e1_jnt, e2_jnt, total, anom) in enumerate(CONDITIONS):
     a1 = 0.4 if anom else 1.0
