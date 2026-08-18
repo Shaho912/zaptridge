@@ -109,7 +109,7 @@ ax.plot(layers_cp_c, val_cp_cas_c, color=C_VAL, linewidth=2, linestyle=":",  zor
 
 # ── axes ──────────────────────────────────────────────────────────────────────
 ax.set_xlim(-0.5, MAX_LAYER + 0.5)
-ax.set_ylim(0.22, 1.04)
+ax.set_ylim(0.04, 1.04)
 ax.set_xticks([0, 2, 4, 6, 8, 10])
 ax.set_xticklabels(["0", "2", "4", "6", "8", "10+"])
 ax.set_yticks([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0])
