@@ -93,10 +93,6 @@ ax.set_title(
     fontsize=10.5, fontweight="bold", pad=10, loc="left",
 )
 
-fig.text(0.01, -0.02,
-         "4 and 5-cartridge results use 8Q each; 6-cartridge results use 4Q each.  "
-         "Drop normalized by question count.",
-         fontsize=7.5, color=GRAY)
 
 plt.tight_layout()
 out = os.path.join(OUT_DIR, "cold_warm_swap.png")
