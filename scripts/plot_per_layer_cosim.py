@@ -92,16 +92,20 @@ fig, ax = plt.subplots(figsize=(10, 5))
 fig.patch.set_facecolor("white")
 ax.set_facecolor("white")
 
-for y in [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]:
+for y in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]:
     ax.axhline(y, color=LGRAY, linewidth=0.7, zorder=1)
 
-# cross-condition — solid lines (dense, no markers)
+# cross-condition — solid lines
 ax.plot(layers_cc_c, key_cc_c, color=C_KEY, linewidth=2, linestyle="-",  zorder=3)
 ax.plot(layers_cc_c, val_cc_c, color=C_VAL, linewidth=2, linestyle="-",  zorder=3)
 
-# cross-patient — dashed lines (dense, no markers)
-ax.plot(layers_cp_c, key_cp_c, color=C_KEY, linewidth=2, linestyle="--", zorder=4)
-ax.plot(layers_cp_c, val_cp_c, color=C_VAL, linewidth=2, linestyle="--", zorder=4)
+# cross-patient independent — dashed lines
+ax.plot(layers_cp_c, key_cp_ind_c, color=C_KEY, linewidth=2, linestyle="--", zorder=4)
+ax.plot(layers_cp_c, val_cp_ind_c, color=C_VAL, linewidth=2, linestyle="--", zorder=4)
+
+# cross-patient CAS — dotted lines
+ax.plot(layers_cp_c, key_cp_cas_c, color=C_KEY, linewidth=2, linestyle=":",  zorder=5)
+ax.plot(layers_cp_c, val_cp_cas_c, color=C_VAL, linewidth=2, linestyle=":",  zorder=5)
 
 # ── axes ──────────────────────────────────────────────────────────────────────
 ax.set_xlim(-0.5, MAX_LAYER + 0.5)
