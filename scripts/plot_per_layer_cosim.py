@@ -81,9 +81,11 @@ key_cc_c    = [key_cc[i]    for i in cc_idx]
 val_cc_c    = [val_cc[i]    for i in cc_idx]
 
 cp_idx = [i for i, l in enumerate(layers_cp_all) if l <= MAX_LAYER]
-layers_cp_c = [layers_cp_all[i] for i in cp_idx]
-key_cp_c    = [key_cp_all[i]    for i in cp_idx]
-val_cp_c    = [val_cp_all[i]    for i in cp_idx]
+layers_cp_c   = [layers_cp_all[i] for i in cp_idx]
+key_cp_ind_c  = [key_cp_ind[i]    for i in cp_idx]
+val_cp_ind_c  = [val_cp_ind[i]    for i in cp_idx]
+key_cp_cas_c  = [key_cp_cas[i]    for i in cp_idx]
+val_cp_cas_c  = [val_cp_cas[i]    for i in cp_idx]
 
 # ── figure ────────────────────────────────────────────────────────────────────
 fig, ax = plt.subplots(figsize=(10, 5))
