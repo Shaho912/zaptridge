@@ -125,12 +125,16 @@ ax.spines["bottom"].set_color(LGRAY)
 l1 = mlines.Line2D([], [], color=C_KEY, linewidth=2, linestyle="-",
                    label="Keys — same patient, Ind vs CAS")
 l2 = mlines.Line2D([], [], color=C_KEY, linewidth=2, linestyle="--",
-                   label="Keys — p01 vs p02 (cross-patient)")
-l3 = mlines.Line2D([], [], color=C_VAL, linewidth=2, linestyle="-",
+                   label="Keys — p01 ind vs p02 ind")
+l3 = mlines.Line2D([], [], color=C_KEY, linewidth=2, linestyle=":",
+                   label="Keys — p01 CAS vs p02 CAS")
+l4 = mlines.Line2D([], [], color=C_VAL, linewidth=2, linestyle="-",
                    label="Values — same patient, Ind vs CAS")
-l4 = mlines.Line2D([], [], color=C_VAL, linewidth=2, linestyle="--",
-                   label="Values — p01 vs p02 (cross-patient)")
-ax.legend(handles=[l1, l2, l3, l4], fontsize=8.5, loc="lower right",
+l5 = mlines.Line2D([], [], color=C_VAL, linewidth=2, linestyle="--",
+                   label="Values — p01 ind vs p02 ind")
+l6 = mlines.Line2D([], [], color=C_VAL, linewidth=2, linestyle=":",
+                   label="Values — p01 CAS vs p02 CAS")
+ax.legend(handles=[l1, l2, l3, l4, l5, l6], fontsize=8.5, loc="lower right",
           framealpha=0.9, edgecolor=LGRAY)
 
 ax.set_title(
