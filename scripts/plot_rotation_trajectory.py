@@ -76,7 +76,7 @@ ax.legend(fontsize=9, loc="upper right", framealpha=0.9, edgecolor=LGRAY)
 
 ax.set_title(
     "Key vs Value Rotation: Independent vs CAS Training\n"
-    "Qwen3-8B · 1024 slots · avg. 4 patients · 50-step windows",
+    "Qwen3-8B · 1024 slots · avg. 4 patients",
     fontsize=10.5, fontweight="bold", pad=10, loc="left",
 )
 
