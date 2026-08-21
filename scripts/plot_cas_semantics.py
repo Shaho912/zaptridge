@@ -30,7 +30,7 @@ CONDITIONS = [
     ("4 ML papers\n(same domain)",         42, 36, 35, 45, False),
     ("4-domain\n(ML/FPGA/Bio/Astro)",      20, 17, 18, 21, False),
     ("Patient records\n4 patients (LH)",    8,  7, 10, 16, False),
-    ("Patient records\n5 patients † (LH)",  6,  9, 10, 20, True),
+    ("Patient records\n5 patients (LH)",  6,  9, 10, 20, True),
     ("Distinct\nquery types (Setup 2)",    18, 18, None, 18, False),
 ]
 
