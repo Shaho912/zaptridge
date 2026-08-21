@@ -97,7 +97,7 @@ ax.legend(handles=[p1, p2], fontsize=9, loc="upper right",
           framealpha=0.9, edgecolor=LGRAY)
 
 ax.set_title(
-    "CAS Effect on Joint Accuracy — by Corpus Type  (Qwen3-8B student)",
+    "CAS Effect on Joint Accuracy by Corpus Type  (Qwen3-8B student)",
     fontsize=11, fontweight="bold", pad=12, loc="left",
 )
 
