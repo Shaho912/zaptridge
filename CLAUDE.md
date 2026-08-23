@@ -8,7 +8,7 @@ A research project by a Penn PhD student building toward an **on-device personal
 
 ## Base Implementation
 
-Built on top of [shreyansh26/cartridges](https://github.com/shreyansh26/cartridges), a single-GPU reproduction of the HazyResearch Cartridges paper (Eyuboglu et al., 2025). Our repo is [Shaho912/zaptridge](https://github.com/Shaho912/zaptridge).
+Built on top of [shreyansh26/cartridges](https://github.com/shreyansh26/cartridges), a single-GPU reproduction of the HazyResearch Cartridges paper (Eyuboglu et al., 2025). Our repo is [Shaho912/mobile_cartridges](https://github.com/Shaho912/mobile_cartridges).
 
 **Hardware:** DGX server, NVIDIA B200 MIG45 GPU, Qwen/Qwen3-8B as working model. vLLM server runs on the same machine for bootstrap/teacher generation.
 
