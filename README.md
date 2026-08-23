@@ -1,5 +1,25 @@
-# Cartridges + KVzip+
+# mobile_cartridges
 
-This repo is inspired by [shreyansh26/cartridges](https://github.com/shreyansh26/cartridges), a clean single-GPU reproduction of the Cartridges idea from the [HazyResearch paper](https://arxiv.org/abs/2506.06266). It extends that baseline by attempting to implement **KVzip+ guided initialization**: instead of seeding the Cartridge from the first `p` tokens of the corpus, tokens are ranked by KVzip+ importance scores and the top-`p` scoring tokens are used for initialization. The goal is to improve exact-match quality at the same compression ratio.
+Research toward an **on-device personal memory system for mobile LLMs**. Built on top of [shreyansh26/cartridges](https://github.com/shreyansh26/cartridges), a single-GPU reproduction of the HazyResearch Cartridges paper (Eyuboglu et al., 2025).
 
-The core idea remains the same: compress a long context into a trainable KV cache, then answer many follow-up questions against that compact cache instead of repeatedly paying full-context prefill cost.
+## What This Is
+
+Instead of re-prefilling a long context on every query, a compact set of learned K/V tensors (a "cartridge") is trained once to encode a document or conversation, then loaded at inference time. The long-term target is running this on-device: a local LLM compresses the day's conversation into a cartridge overnight, and loads it the next morning for persistent memory with no cloud round-trip.
+
+**Current model:** Qwen/Qwen3-8B on a DGX B200 MIG45 GPU.
+
+## Key Extensions
+
+- **Multi-cartridge composition (CAS)** — distractor training so multiple cartridges coexist when concatenated at inference, achieving positive transfer across diverse patient record corpora
+- **Cold/warm swap** — plug-and-play addition of new cartridges to an existing CAS set
+- **Conversation cartridges** — `compress_conversation.py` compresses conversation history without vLLM
+- **LongHealth integration** — MCQ benchmark eval across 8 patient records
+- **Per-phase timing and GPU memory profiling**
+
+## Setup
+
+```bash
+export CARTRIDGES_HF_MODEL_ID=Qwen/Qwen3-8B
+```
+
+See `CLAUDE.md` for full workflow, hyperparameters, and experiment commands.
